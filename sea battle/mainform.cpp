@@ -19,8 +19,8 @@ void seabattle::mainform::Server()
 {
 	Int32 port = Decimal::ToInt32(SrvPortNum->Value);
 	IPAddress^ localAddr = IPAddress::Parse("127.0.0.1");
-	TcpListener^ server = gcnew TcpListener(localAddr, port);
-	server->Start();
+	srv = gcnew TcpListener(localAddr, port);
+	srv->Start();
 
 	array<Byte>^ bytes = gcnew array<Byte>(256);
 	String^ EnemyName = nullptr;
@@ -28,40 +28,44 @@ void seabattle::mainform::Server()
 	while (true) {
 		this->Invoke(gcnew Action<String^>(this, &mainform::SetStatusLbl), "Waiting for connection...");
 
-		TcpClient^ client = server->AcceptTcpClient();
+		TCPclient = srv->AcceptTcpClient();
 		this->Invoke(gcnew Action<String^>(this, &mainform::SetStatusLbl), "Connected");
 
-		Stream = client->GetStream();
+		Stream = TCPclient->GetStream();
 		int i;
+		try {
+			do {
+				i = Stream->Read(bytes, 0, bytes->Length);
+				if (i > 0)
+					switch (bytes[0]) {
+					case 11:	//ready flags
+					{
+						this->Invoke(gcnew Action<bool>(this, &mainform::UpdateEnemyFlag), (bool)bytes[1]);
+					}
+					break;
+					case 48:	//hello
+					{
+						prgstat = ProgStat::ServerWaitClientReady;
+						EnemyName = System::Text::Encoding::ASCII->GetString(bytes, 2, 2 + bytes[1]);
+						this->Invoke(gcnew Action<String^>(this, &mainform::SetEnemyName), EnemyName);
+						this->Invoke(gcnew Action(this, &mainform::UpdateWnd));
 
-		do {
-			i = Stream->Read(bytes, 0, bytes->Length);
-			if (i > 0)
-				switch (bytes[0]) {
-				case 11:	//ready flags
-				{
-					this->Invoke(gcnew Action<bool>(this, &mainform::UpdateEnemyFlag), (bool)bytes[1]);
-				}
-				break;
-				case 48:	//hello
-				{
-					prgstat = ProgStat::ServerWaitClientReady;
-					EnemyName = System::Text::Encoding::ASCII->GetString(bytes, 2, 2 + bytes[1]);
-					this->Invoke(gcnew Action<String^>(this, &mainform::SetEnemyName), EnemyName);
-					this->Invoke(gcnew Action(this, &mainform::UpdateWnd));
-
-					uint8_t len = PlayerNameEd->Text->Length;
-					array<Byte>^ msg = gcnew array<Byte>(PlayerNameEd->Text->Length + 2);
-					msg[0] = 49;
-					msg[1] = len;
-					System::Text::Encoding::ASCII->GetBytes(PlayerNameEd->Text->ToCharArray(), 0, len, msg, 2);
-					Stream->Write(msg, 0, msg->Length);
-				}
-				break;
-				}
-		} while (1);
-
-		client->Close();
+						uint8_t len = PlayerNameEd->Text->Length;
+						array<Byte>^ msg = gcnew array<Byte>(PlayerNameEd->Text->Length + 2);
+						msg[0] = 49;
+						msg[1] = len;
+						System::Text::Encoding::ASCII->GetBytes(PlayerNameEd->Text->ToCharArray(), 0, len, msg, 2);
+						Stream->Write(msg, 0, msg->Length);
+					}
+					break;
+					}
+			} while (1);
+		}
+		catch (...) {}
+		try {
+			TCPclient->Close();
+		}
+		catch (...) {}
 	}
 }
 
@@ -122,6 +126,7 @@ void seabattle::mainform::PrepareArea(array<array<Button^>^>^ area, array<array<
 			area[i][j]->Size = System::Drawing::Size(22, 22);
 			area[i][j]->TabStop = false;
 
+			area[i][j]->Click += gcnew System::EventHandler(this, &mainform::ChangeImg);
 			this->Controls->Add(area[i][j]);
 		}
 	}
@@ -151,8 +156,8 @@ void seabattle::mainform::UpdateWnd()
 
 		StatusLbl->Visible = true;
 
-		Thread^ srvThread = gcnew Thread(gcnew ThreadStart(this, &mainform::Server));
-		srvThread->Start();
+		tcp_tr = gcnew Thread(gcnew ThreadStart(this, &mainform::Server));
+		tcp_tr->Start();
 	}
 	break;
 	case ProgStat::ServerWaitClientReady:
@@ -201,8 +206,8 @@ void seabattle::mainform::UpdateWnd()
 		ConnectBtn->Visible = false;
 
 		StatusLbl->Visible = true;
-		Thread^ clientThread = gcnew Thread(gcnew ThreadStart(this, &mainform::Client));
-		clientThread->Start();
+		tcp_tr = gcnew Thread(gcnew ThreadStart(this, &mainform::Client));
+		tcp_tr->Start();
 	}
 	break;
 	case ProgStat::ClientConnected:
@@ -226,15 +231,20 @@ void seabattle::mainform::SetEnemyName(System::String ^ name)
 void seabattle::mainform::UpdateEnemyFlag(bool stat)
 {
 	EnemyReadyFlag->Checked = stat;
+
+	if (prgstat == ProgStat::ServerWaitClientReady && MyReadyFlag->Checked && EnemyReadyFlag->Checked)
+		StartGameBtn->Visible = true;
+	else
+		StartGameBtn->Visible = false;
 }
 
 void seabattle::mainform::Client()
 {
 	Int32 port = Decimal::ToInt32(SrvPortNum->Value);
 	this->Invoke(gcnew Action<String^>(this, &mainform::SetStatusLbl), "Connecting...");
-	TcpClient^ client = gcnew TcpClient(HostNameEdit->Text, port);
+	TCPclient = gcnew TcpClient(HostNameEdit->Text, port);
 
-	Stream = client->GetStream();
+	Stream = TCPclient->GetStream();
 
 	uint8_t len = PlayerNameEd->Text->Length;
 	array<Byte>^ msg = gcnew array<Byte>(PlayerNameEd->Text->Length + 2);
@@ -244,28 +254,33 @@ void seabattle::mainform::Client()
 	Stream->Write(msg, 0, msg->Length);
 	array<Byte>^ bytes = gcnew array<Byte>(256);
 	int i;
+	try {
+		do {
+			i = Stream->Read(bytes, 0, bytes->Length);
 
-	do {
-		i = Stream->Read(bytes, 0, bytes->Length);
-		if (i > 0)
-			switch (bytes[0]) {
-			case 11:	//ready flags
-			{
-				this->Invoke(gcnew Action<bool>(this, &mainform::UpdateEnemyFlag), (bool)bytes[1]);
-			}
-			break;
-			case 49:	//oh, hi!
-			{
-				prgstat = ProgStat::ClientConnected;
-				String^ EnemyName = System::Text::Encoding::ASCII->GetString(bytes, 2, 2 + bytes[1]);
-				this->Invoke(gcnew Action<String^>(this, &mainform::SetEnemyName), EnemyName);
-				this->Invoke(gcnew Action(this,&mainform::UpdateWnd));
-			}
-			break;
-			}
-	} while (1);
-
-	client->Close();
+			if (i > 0)
+				switch (bytes[0]) {
+				case 11:	//ready flags
+				{
+					this->Invoke(gcnew Action<bool>(this, &mainform::UpdateEnemyFlag), (bool)bytes[1]);
+				}
+				break;
+				case 49:	//oh, hi!
+				{
+					prgstat = ProgStat::ClientConnected;
+					String^ EnemyName = System::Text::Encoding::ASCII->GetString(bytes, 2, 2 + bytes[1]);
+					this->Invoke(gcnew Action<String^>(this, &mainform::SetEnemyName), EnemyName);
+					this->Invoke(gcnew Action(this, &mainform::UpdateWnd));
+				}
+				break;
+				}
+		} while (1);
+	}
+	catch (...) {}
+	try {
+		TCPclient->Close();
+	}
+	catch (...) {}
 }
 
 System::Void seabattle::mainform::StartSrvBtn_Click(System::Object ^ sender, System::EventArgs ^ e)
@@ -309,4 +324,9 @@ System::Void seabattle::mainform::StartGameBtn_Click(System::Object ^ sender, Sy
 {
 	prgstat = ProgStat::ServerGameStart;
 	UpdateWnd();
+}
+
+System::Void seabattle::mainform::ChangeImg(System::Object ^ sender, System::EventArgs ^ e)
+{
+	//
 }

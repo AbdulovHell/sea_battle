@@ -32,6 +32,18 @@ namespace seabattle {
 		/// </summary>
 		~mainform()
 		{
+			if (Stream != nullptr) {
+				Stream->Close();
+			}
+			if (TCPclient != nullptr) {
+				TCPclient->Close();
+			}
+			if (srv != nullptr) {
+				srv->Stop();
+			}
+			if (tcp_tr != nullptr) {
+				tcp_tr->Abort();
+			}
 			if (components)
 			{
 				delete components;
@@ -86,6 +98,9 @@ namespace seabattle {
 		array<array<Button^>^>^ EnemyArea;
 		array<array<int>^>^ EnemyStat;
 		ProgStat prgstat = ProgStat::Main;
+		Thread^ tcp_tr;
+		TcpClient^ TCPclient;
+		TcpListener^ srv;
 		System::ComponentModel::Container ^components;
 
 #pragma region Windows Form Designer generated code
@@ -187,6 +202,7 @@ namespace seabattle {
 			this->button1->TextImageRelation = System::Windows::Forms::TextImageRelation::ImageAboveText;
 			this->button1->UseVisualStyleBackColor = true;
 			this->button1->Visible = false;
+			this->button1->Click += gcnew System::EventHandler(this, &mainform::ChangeImg);
 			// 
 			// pictureBox2
 			// 
@@ -310,5 +326,6 @@ namespace seabattle {
 	private: System::Void MyReadyFlag_CheckedChanged(System::Object^  sender, System::EventArgs^  e);
 	private: System::Void ConnectBtn_Click(System::Object^  sender, System::EventArgs^  e);
 	private: System::Void StartGameBtn_Click(System::Object^  sender, System::EventArgs^  e);
-};
+	private: System::Void ChangeImg(System::Object^  sender, System::EventArgs^  e);
+	};
 }
