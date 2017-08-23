@@ -81,9 +81,6 @@ void seabattle::mainform::InitGameSession()
 
 void seabattle::mainform::PrepareArea(array<array<Button^>^>^ area, array<array<int>^>^ stat, bool isEnemyArea)
 {
-	System::ComponentModel::ComponentResourceManager^ resource = (gcnew System::ComponentModel::ComponentResourceManager(mainform::typeid));
-	Image^ empty = (safe_cast<System::Drawing::Image^>(resource->GetObject("pictureBox2.Image")));
-
 	area = gcnew array<array<Button^>^>(11);
 	stat = gcnew array<array<int>^>(11);
 	for (int i = 0; i < 11; i++) {
@@ -94,7 +91,7 @@ void seabattle::mainform::PrepareArea(array<array<Button^>^>^ area, array<array<
 			stat[i][j] = 0;
 
 			if (j == 0 && i == 0) {
-				area[i][j]->Image = empty;
+				area[i][j]->Image = ImageProvider::Empty;
 				area[i][j]->Visible = false;
 			}
 			else if (j == 0 && i != 0) {
@@ -115,7 +112,7 @@ void seabattle::mainform::PrepareArea(array<array<Button^>^>^ area, array<array<
 				area[i][j]->Enabled = false;
 			}
 			else
-				area[i][j]->Image = empty;
+				area[i][j]->Image = ImageProvider::Empty;
 
 			//char name[3] = { 'A' + j - 1 ,'0' + i,0 };
 			//area[i][j]->Name = gcnew String(name);
@@ -166,7 +163,12 @@ void seabattle::mainform::UpdateWnd()
 		//prepare game area
 		PrepareArea(GameArea, AreaStat, false);
 		//show placing ships interface
-
+		Ship1Img->Visible = true;
+		Ship2Img->Visible = true;
+		Ship3Img->Visible = true;
+		Ship4Img->Visible = true;
+		PointEstLbl->Visible = true;
+		PointEstLbl->Text = "20";
 		//ready flags
 		EnemyReadyFlag->Visible = true;
 		MyReadyFlag->Visible = true;
@@ -328,5 +330,98 @@ System::Void seabattle::mainform::StartGameBtn_Click(System::Object ^ sender, Sy
 
 System::Void seabattle::mainform::ChangeImg(System::Object ^ sender, System::EventArgs ^ e)
 {
-	//
+	Button^ btn = dynamic_cast<Button^>(sender);
+	Random rnd;
+	int a = rnd.Next(1, 5);
+
+	switch (a)
+	{
+	case 1:
+		btn->Image = ImageProvider::Empty;
+		break;
+	case 2:
+		btn->Image = ImageProvider::Damaged_Unknown;
+		break;
+	case 3:
+		btn->Image = ImageProvider::Single_Destroyed;
+		break;
+	case 4:
+		btn->Image = ImageProvider::Miss;
+		break;
+	default:
+		break;
+	}
+}
+
+System::Void seabattle::mainform::mainform_Load(System::Object ^ sender, System::EventArgs ^ e)
+{
+	ImageProvider::ImageProvider();
+}
+
+System::Void seabattle::mainform::Ship4Img_MouseDown(System::Object ^ sender, System::Windows::Forms::MouseEventArgs ^ e)
+{
+	tempImg = sender;
+	if (tempImg != nullptr) {
+		System::Drawing::Size dragSize = SystemInformation::DragSize;
+
+		dragBoxFromMouseDown = Rectangle(Point(e->X - (dragSize.Width / 2), e->Y - (dragSize.Height / 2)), dragSize);
+	}
+	else
+		dragBoxFromMouseDown = Rectangle::Empty;
+}
+
+System::Void seabattle::mainform::Ship4Img_MouseMove(System::Object ^ sender, System::Windows::Forms::MouseEventArgs ^ e)
+{
+	if ((e->Button & System::Windows::Forms::MouseButtons::Left) == System::Windows::Forms::MouseButtons::Left) {
+		if (dragBoxFromMouseDown != Rectangle::Empty && !dragBoxFromMouseDown.Contains(e->X, e->Y)) {
+			screenOffset = SystemInformation::WorkingArea.Location;
+			DragDropEffects dropEffect = this->Ship4Img->DoDragDrop(this->tempImg, static_cast<DragDropEffects>(DragDropEffects::Copy));
+		}
+	}
+}
+
+System::Void seabattle::mainform::Ship4Img_MouseUp(System::Object ^ sender, System::Windows::Forms::MouseEventArgs ^ e)
+{
+	dragBoxFromMouseDown = Rectangle::Empty;
+}
+
+System::Void seabattle::mainform::button1_DragDrop(System::Object ^ sender, System::Windows::Forms::DragEventArgs ^ e)
+{
+	if (e->Data->GetDataPresent(PictureBox::typeid)) {
+		PictureBox^ item = dynamic_cast<PictureBox^>(e->Data->GetData(PictureBox::typeid));
+		if (e->Effect == DragDropEffects::Copy) {
+			if (item != nullptr) {
+				//TODO: вставляем кораблик!
+
+				//Test
+				Button^ btn = dynamic_cast<Button^>(sender);
+				//btn->Image = item->Image;
+				if (item->Image->Width == 64)
+					btn->Image = ImageProvider::Ship4;
+				//
+			}
+		}
+	}
+}
+
+System::Void seabattle::mainform::button1_DragOver(System::Object ^ sender, System::Windows::Forms::DragEventArgs ^ e)
+{
+	if (!e->Data->GetDataPresent(PictureBox::typeid)) {
+		e->Effect = DragDropEffects::None;
+		return;
+	}
+	if ((e->AllowedEffect&DragDropEffects::Copy) == DragDropEffects::Copy)
+		e->Effect = DragDropEffects::Copy;
+	else
+		e->Effect = DragDropEffects::None;
+}
+
+seabattle::mainform::ImageProvider::ImageProvider()
+{
+	Resource = (gcnew System::ComponentModel::ComponentResourceManager(mainform::typeid));
+	Empty = (safe_cast<System::Drawing::Image^>(Resource->GetObject("pictureBox2.Image")));
+	Damaged_Unknown = (safe_cast<System::Drawing::Image^>(Resource->GetObject("pictureBox1.Image")));
+	Single_Destroyed = (safe_cast<System::Drawing::Image^>(Resource->GetObject("pictureBox3.Image")));
+	Miss = (safe_cast<System::Drawing::Image^>(Resource->GetObject("pictureBox4.Image")));
+	Ship4 = (safe_cast<System::Drawing::Image^>(Resource->GetObject("Ship4Img.Image")));
 }
