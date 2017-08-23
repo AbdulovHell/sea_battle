@@ -19,7 +19,7 @@ void seabattle::mainform::Server()
 {
 	Int32 port = Decimal::ToInt32(SrvPortNum->Value);
 	IPAddress^ localAddr = IPAddress::Parse("127.0.0.1");
-	srv = gcnew TcpListener(localAddr, port);
+	srv = gcnew TcpListener(/*localAddr*/IPAddress::Any, port);
 	srv->Start();
 
 	array<Byte>^ bytes = gcnew array<Byte>(256);
@@ -57,6 +57,22 @@ void seabattle::mainform::Server()
 						System::Text::Encoding::ASCII->GetBytes(PlayerNameEd->Text->ToCharArray(), 0, len, msg, 2);
 						Stream->Write(msg, 0, msg->Length);
 					}
+					case 50:
+					{
+						int I= bytes[1], J = bytes[2];
+						if (AreaStat[I][J] > 3) {
+							array<Byte>^ msg = gcnew array<Byte>(2);
+							msg[0] = 51;
+							msg[1] = 1;
+							Stream->Write(msg, 0, msg->Length);
+
+							AreaStat[I][J]
+
+							prgstat=ProgStat::ServerTurn;
+							this->Invoke(gcnew Action(this, &mainform::UpdateWnd));
+						}
+					}
+						break;
 					break;
 					}
 			} while (1);
@@ -79,14 +95,14 @@ void seabattle::mainform::InitGameSession()
 	PrepareArea(EnemyArea, EnemyStat, true);
 }
 
-void seabattle::mainform::PrepareArea(array<array<Button^>^>^ area, array<array<int>^>^ stat, bool isEnemyArea)
+void seabattle::mainform::PrepareArea(array<array<Button^>^>^ %area, array<array<int>^>^ %stat, bool isEnemyArea)
 {
-	area = gcnew array<array<Button^>^>(11);
-	stat = gcnew array<array<int>^>(11);
-	for (int i = 0; i < 11; i++) {
-		area[i] = gcnew array<Button^>(11);
-		stat[i] = gcnew array<int>(11);
-		for (int j = 0; j < 11; j++) {
+	area = gcnew array<array<Button^>^>(_strings);
+	stat = gcnew array<array<int>^>(_strings);
+	for (int i = 0; i < _strings; i++) {
+		area[i] = gcnew array<Button^>(_collomns);
+		stat[i] = gcnew array<int>(_collomns);
+		for (int j = 0; j < _collomns; j++) {
 			area[i][j] = gcnew Button();
 			stat[i][j] = 0;
 
@@ -118,12 +134,17 @@ void seabattle::mainform::PrepareArea(array<array<Button^>^>^ area, array<array<
 			//area[i][j]->Name = gcnew String(name);
 			if (isEnemyArea)
 				area[i][j]->Location = System::Drawing::Point(500 + i * 22, 40 + j * 22);
-			else
+			else {
 				area[i][j]->Location = System::Drawing::Point(200 + i * 22, 40 + j * 22);
+				area[i][j]->AllowDrop = true;
+				area[i][j]->DragOver += gcnew System::Windows::Forms::DragEventHandler(this, &mainform::button1_DragOver);
+				area[i][j]->DragDrop += gcnew System::Windows::Forms::DragEventHandler(this, &mainform::button1_DragDrop);
+			}
 			area[i][j]->Size = System::Drawing::Size(22, 22);
 			area[i][j]->TabStop = false;
 
-			area[i][j]->Click += gcnew System::EventHandler(this, &mainform::ChangeImg);
+			if (!isEnemyArea)	area[i][j]->Click += gcnew System::EventHandler(this, &mainform::ChangeImg);
+			else area[i][j]->Click += gcnew System::EventHandler(this, &mainform::button1_Click);
 			this->Controls->Add(area[i][j]);
 		}
 	}
@@ -167,8 +188,13 @@ void seabattle::mainform::UpdateWnd()
 		Ship2Img->Visible = true;
 		Ship3Img->Visible = true;
 		Ship4Img->Visible = true;
-		PointEstLbl->Visible = true;
-		PointEstLbl->Text = "20";
+		//PointEstLbl->Visible = true;
+		//PointEstLbl->Text = "20";
+
+		AreaStat[0][1] = 4;
+		AreaStat[0][2] = 3;
+		AreaStat[0][3] = 2;
+		AreaStat[0][4] = 1;
 		//ready flags
 		EnemyReadyFlag->Visible = true;
 		MyReadyFlag->Visible = true;
@@ -177,7 +203,24 @@ void seabattle::mainform::UpdateWnd()
 	case ProgStat::ServerGameStart:
 	{
 		//prepare enemy area
+		PrepareArea(EnemyArea, EnemyStat, true);
+		//hide interface
+		Ship1Img->Visible = false;
+		Ship2Img->Visible = false;
+		Ship3Img->Visible = false;
+		Ship4Img->Visible = false;
+		turnedShip2->Visible = false;
+		pictureBox6->Visible = false;
+		pictureBox5->Visible = false;
+		SinglesLeft->Visible = false;
+		Ships2Left->Visible = false;
+		Ships3Left->Visible = false;
+		Ships4Left->Visible = false;
+		for (int i = 1; i < _strings; i++)
+			for (int j = 1; j < _collomns; j++)
+				GameArea[i][j]->Click -= gcnew System::EventHandler(this, &mainform::ChangeImg);
 		//start game
+
 	}
 	break;
 	case ProgStat::ServerPlay:
@@ -216,6 +259,11 @@ void seabattle::mainform::UpdateWnd()
 	{
 		PrepareArea(GameArea, AreaStat, false);
 
+		AreaStat[0][1] = 4;
+		AreaStat[0][2] = 3;
+		AreaStat[0][3] = 2;
+		AreaStat[0][4] = 1;
+
 		SetStatusLbl("Connected");
 		EnemyReadyFlag->Visible = true;
 		MyReadyFlag->Visible = true;
@@ -244,7 +292,22 @@ void seabattle::mainform::Client()
 {
 	Int32 port = Decimal::ToInt32(SrvPortNum->Value);
 	this->Invoke(gcnew Action<String^>(this, &mainform::SetStatusLbl), "Connecting...");
-	TCPclient = gcnew TcpClient(HostNameEdit->Text, port);
+	//TCPclient = gcnew TcpClient(HostNameEdit->Text, port);
+	int count = 0;
+	while (count < 10) {
+		count++;
+		try {
+			TCPclient = gcnew TcpClient(HostNameEdit->Text, port);
+			break;
+		}
+		catch (...)
+		{
+
+		}
+	}
+	if (TCPclient == nullptr) {
+		//TODO: обработать ошибк
+	}
 
 	Stream = TCPclient->GetStream();
 
@@ -283,6 +346,152 @@ void seabattle::mainform::Client()
 		TCPclient->Close();
 	}
 	catch (...) {}
+}
+
+bool seabattle::mainform::CheckIfPlaceble(int I, int J, int ship, bool turned)
+{
+	int I_right;
+	int J_down;
+	if (!turned) {
+		I_right = I + ship + 1;
+		J_down = J + 2;
+	}
+	else
+	{
+		I_right = I + 2;
+		J_down = J + ship + 1;
+	}
+	for (int i = I - 1; i < I_right; i++) {
+		if (!i || i == _collomns) continue;
+		if (i > _collomns) return false;
+		for (int j = J - 1; j < J_down; j++) {
+			if (!j || j == _strings) continue;
+			if (j > _strings) return false;
+			if (AreaStat[i][j])
+				return false;
+		}
+	}
+
+	return true;
+}
+
+void seabattle::mainform::PlaceShip(int I, int J, int ship, bool turned)
+{
+	switch (ship) {
+	case 1:
+		AreaStat[I][J] = (int)CellIndex::Single;
+		GameArea[I][J]->Image = ImageProvider::Single;
+		break;
+	case 2:
+		if (!turned) {
+			AreaStat[I][J] = (int)CellIndex::LeftPart;
+			GameArea[I][J]->Image = ImageProvider::LeftPart;
+			AreaStat[I + 1][J] = (int)CellIndex::RightPart;
+			GameArea[I + 1][J]->Image = ImageProvider::RightPart;
+		}
+		else {
+			AreaStat[I][J] = (int)CellIndex::UpPart;
+			GameArea[I][J]->Image = ImageProvider::UpPart;
+			AreaStat[I][J + 1] = (int)CellIndex::DownPart;
+			GameArea[I][J + 1]->Image = ImageProvider::DownPart;
+		}
+		break;
+	case 3:
+		if (!turned) {
+			AreaStat[I][J] = (int)CellIndex::LeftPart;
+			GameArea[I][J]->Image = ImageProvider::LeftPart;
+			AreaStat[I + 1][J] = (int)CellIndex::LeftRightPart;
+			GameArea[I + 1][J]->Image = ImageProvider::LeftRightPart;
+			AreaStat[I + 2][J] = (int)CellIndex::RightPart;
+			GameArea[I + 2][J]->Image = ImageProvider::RightPart;
+		}
+		else {
+			AreaStat[I][J] = (int)CellIndex::UpPart;
+			GameArea[I][J]->Image = ImageProvider::UpPart;
+			AreaStat[I][J + 1] = (int)CellIndex::UpDownPart;
+			GameArea[I][J + 1]->Image = ImageProvider::UpDownPart;
+			AreaStat[I][J + 2] = (int)CellIndex::DownPart;
+			GameArea[I][J + 2]->Image = ImageProvider::DownPart;
+		}
+		break;
+	case 4:
+		if (!turned) {
+			AreaStat[I][J] = (int)CellIndex::LeftPart;
+			GameArea[I][J]->Image = ImageProvider::LeftPart;
+			AreaStat[I + 1][J] = (int)CellIndex::LeftRightPart;
+			GameArea[I + 1][J]->Image = ImageProvider::LeftRightPart;
+			AreaStat[I + 2][J] = (int)CellIndex::LeftRightPart;
+			GameArea[I + 2][J]->Image = ImageProvider::LeftRightPart;
+			AreaStat[I + 3][J] = (int)CellIndex::RightPart;
+			GameArea[I + 3][J]->Image = ImageProvider::RightPart;
+		}
+		else {
+			AreaStat[I][J] = (int)CellIndex::UpPart;
+			GameArea[I][J]->Image = ImageProvider::UpPart;
+			AreaStat[I][J + 1] = (int)CellIndex::UpDownPart;
+			GameArea[I][J + 1]->Image = ImageProvider::UpDownPart;
+			AreaStat[I][J + 2] = (int)CellIndex::UpDownPart;
+			GameArea[I][J + 2]->Image = ImageProvider::UpDownPart;
+			AreaStat[I][J + 3] = (int)CellIndex::DownPart;
+			GameArea[I][J + 3]->Image = ImageProvider::DownPart;
+		}
+		break;
+	}
+}
+
+void seabattle::mainform::DeleteShip(int I, int J)
+{
+
+	if (!AreaStat[I][J]) return;
+
+	int temp_i = I;
+	int temp_j = J;
+	int ship = 0;
+	//go left
+	do {
+		AreaStat[temp_i][temp_j] = 0;
+		GameArea[temp_i][temp_j]->Image = ImageProvider::Empty;
+		temp_i--;
+		ship++;
+	} while (temp_i&&AreaStat[temp_i][temp_j]);
+
+	//go right
+	temp_i = I;
+	do {
+		AreaStat[temp_i][temp_j] = 0;
+		GameArea[temp_i][temp_j]->Image = ImageProvider::Empty;
+		temp_i++;
+		ship++;
+	} while (temp_i < _collomns&&AreaStat[temp_i][temp_j]);
+
+	//go up
+	temp_i = I;
+	do {
+		AreaStat[temp_i][temp_j] = 0;
+		GameArea[temp_i][temp_j]->Image = ImageProvider::Empty;
+		temp_j--;
+		ship++;
+	} while (temp_j&&AreaStat[temp_i][temp_j]);
+
+	//go down
+	temp_j = J;
+	do {
+		AreaStat[temp_i][temp_j] = 0;
+		GameArea[temp_i][temp_j]->Image = ImageProvider::Empty;
+		temp_j++;
+		ship++;
+	} while (temp_j < _strings&&AreaStat[temp_i][temp_j]);
+	ship -= 3;
+	AreaStat[0][ship]++;
+}
+
+void seabattle::mainform::Shoot(int I, int J)
+{
+	array<Byte>^ msg = gcnew array<Byte>(3);
+	msg[0] = 50;
+	msg[1] = I;
+	msg[2] = J;
+	Stream->Write(msg, 0, msg->Length);
 }
 
 System::Void seabattle::mainform::StartSrvBtn_Click(System::Object ^ sender, System::EventArgs ^ e)
@@ -330,27 +539,21 @@ System::Void seabattle::mainform::StartGameBtn_Click(System::Object ^ sender, Sy
 
 System::Void seabattle::mainform::ChangeImg(System::Object ^ sender, System::EventArgs ^ e)
 {
+	int I = 0, J = 0;
 	Button^ btn = dynamic_cast<Button^>(sender);
-	Random rnd;
-	int a = rnd.Next(1, 5);
-
-	switch (a)
-	{
-	case 1:
-		btn->Image = ImageProvider::Empty;
-		break;
-	case 2:
-		btn->Image = ImageProvider::Damaged_Unknown;
-		break;
-	case 3:
-		btn->Image = ImageProvider::Single_Destroyed;
-		break;
-	case 4:
-		btn->Image = ImageProvider::Miss;
-		break;
-	default:
-		break;
+	for (int i = 0; i < 11; i++) {
+		for (int j = 0; j < 11; j++) {
+			if (GameArea[i][j] == btn) {
+				I = i;
+				J = j;
+			}
+		}
 	}
+	DeleteShip(I, J);
+	SinglesLeft->Text = AreaStat[0][1].ToString();
+	Ships2Left->Text = AreaStat[0][2].ToString();
+	Ships3Left->Text = AreaStat[0][3].ToString();
+	Ships4Left->Text = AreaStat[0][4].ToString();
 }
 
 System::Void seabattle::mainform::mainform_Load(System::Object ^ sender, System::EventArgs ^ e)
@@ -392,8 +595,32 @@ System::Void seabattle::mainform::button1_DragDrop(System::Object ^ sender, Syst
 		if (e->Effect == DragDropEffects::Copy) {
 			if (item != nullptr) {
 				//TODO: вставляем кораблик!
+				int I = 0, J = 0;
+				Button^ btn = dynamic_cast<Button^>(sender);
+				for (int i = 0; i < 11; i++) {
+					for (int j = 0; j < 11; j++) {
+						if (GameArea[i][j] == btn) {
+							I = i;
+							J = j;
+						}
+					}
+				}
+				bool turned = false;
+				if (item->Image->Height != 16)
+					turned = true;
+				int index = (item->Image->Width / 16 + item->Image->Height / 16 - 1);
 
-				//Test--------------------------------------------------
+				if (AreaStat[0][index] > 0) {
+					if (CheckIfPlaceble(I, J, index, turned)) {
+						AreaStat[0][index]--;
+						PlaceShip(I, J, index, turned);
+						SinglesLeft->Text = AreaStat[0][1].ToString();
+						Ships2Left->Text = AreaStat[0][2].ToString();
+						Ships3Left->Text = AreaStat[0][3].ToString();
+						Ships4Left->Text = AreaStat[0][4].ToString();
+					}
+				}
+				/*Test--------------------------------------------------
 				Button^ btn = dynamic_cast<Button^>(sender);
 				//btn->Image = item->Image;
 				//if (item->Image->Width == 64)
@@ -415,7 +642,7 @@ System::Void seabattle::mainform::button1_DragDrop(System::Object ^ sender, Syst
 					btn->Image = ImageProvider::Miss;
 					break;
 				}
-				//------------------------------------------------------
+				//------------------------------------------------------*/
 			}
 		}
 	}
@@ -433,6 +660,21 @@ System::Void seabattle::mainform::button1_DragOver(System::Object ^ sender, Syst
 		e->Effect = DragDropEffects::None;
 }
 
+System::Void seabattle::mainform::button1_Click(System::Object ^ sender, System::EventArgs ^ e)
+{
+	int I = 0, J = 0;
+	Button^ btn = dynamic_cast<Button^>(sender);
+	for (int i = 0; i < 11; i++) {
+		for (int j = 0; j < 11; j++) {
+			if (GameArea[i][j] == btn) {
+				I = i;
+				J = j;
+			}
+		}
+	}
+	Shoot(I, J);
+}
+
 seabattle::mainform::ImageProvider::ImageProvider()
 {
 	Resource = (gcnew System::ComponentModel::ComponentResourceManager(mainform::typeid));
@@ -444,4 +686,11 @@ seabattle::mainform::ImageProvider::ImageProvider()
 	Ship3 = (safe_cast<System::Drawing::Image^>(Resource->GetObject("Ship3Img.Image")));
 	Ship2 = (safe_cast<System::Drawing::Image^>(Resource->GetObject("Ship2Img.Image")));
 	Single = (safe_cast<System::Drawing::Image^>(Resource->GetObject("Ship1Img.Image")));
+
+	UpDownPart = (safe_cast<System::Drawing::Image^>(Resource->GetObject("udpImg.Image")));
+	LeftRightPart = (safe_cast<System::Drawing::Image^>(Resource->GetObject("rlpImg.Image")));
+	LeftPart = (safe_cast<System::Drawing::Image^>(Resource->GetObject("lpImg.Image")));
+	RightPart = (safe_cast<System::Drawing::Image^>(Resource->GetObject("rpImg.Image")));
+	UpPart = (safe_cast<System::Drawing::Image^>(Resource->GetObject("upImg.Image")));
+	DownPart = (safe_cast<System::Drawing::Image^>(Resource->GetObject("dpImg.Image")));
 }

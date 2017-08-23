@@ -1,5 +1,6 @@
 #pragma once
-
+#define _collomns 11
+#define _strings 11
 namespace seabattle {
 
 	using namespace System;
@@ -74,6 +75,20 @@ namespace seabattle {
 	private: System::Windows::Forms::PictureBox^  Ship2Img;
 	private: System::Windows::Forms::PictureBox^  Ship1Img;
 	private: System::Windows::Forms::Label^  PointEstLbl;
+	private: System::Windows::Forms::PictureBox^  lpImg;
+	private: System::Windows::Forms::PictureBox^  rpImg;
+	private: System::Windows::Forms::PictureBox^  dpImg;
+	private: System::Windows::Forms::PictureBox^  upImg;
+	private: System::Windows::Forms::PictureBox^  singleImg;
+	private: System::Windows::Forms::PictureBox^  rlpImg;
+	private: System::Windows::Forms::PictureBox^  udpImg;
+	private: System::Windows::Forms::PictureBox^  pictureBox5;
+	private: System::Windows::Forms::PictureBox^  pictureBox6;
+	private: System::Windows::Forms::PictureBox^  turnedShip2;
+	private: System::Windows::Forms::Label^  SinglesLeft;
+	private: System::Windows::Forms::Label^  Ships2Left;
+	private: System::Windows::Forms::Label^  Ships3Left;
+	private: System::Windows::Forms::Label^  Ships4Left;
 	private: System::Windows::Forms::Button^  SrvBtn;
 
 
@@ -91,6 +106,19 @@ namespace seabattle {
 			ClientAttemptToConnect = 8,
 			ClientConnected = 9
 		};
+		enum class CellIndex : int {
+			Empty = 0,
+			Damaged_Unknown = 1,
+			Single_Destroyed = 2,
+			Miss = 3,
+			Single = 4,
+			UpDownPart = 5,
+			LeftRightPart = 6,
+			LeftPart = 7,
+			RightPart = 8,
+			UpPart = 9,
+			DownPart = 10
+		};
 		ref class ImageProvider {
 		private:
 			static System::ComponentModel::ComponentResourceManager^ Resource;
@@ -105,15 +133,26 @@ namespace seabattle {
 			static Image^ Ship3;
 			static Image^ Ship2;
 			static Image^ Single;
+
+			static Image^ UpDownPart;
+			static Image^ LeftRightPart;
+			static Image^ LeftPart;
+			static Image^ RightPart;
+			static Image^ UpPart;
+			static Image^ DownPart;
 		};
 		void Server();
 		void SetStatusLbl(System::String^ msg);
 		void InitGameSession();
-		void PrepareArea(array<array<Button^>^>^ area, array<array<int>^>^ stat, bool isEnemyArea);
+		void PrepareArea(array<array<Button^>^>^ %area, array<array<int>^>^ %stat, bool isEnemyArea);
 		void UpdateWnd();
 		void SetEnemyName(System::String^ name);
 		void UpdateEnemyFlag(bool stat);
 		void Client();
+		bool CheckIfPlaceble(int I, int J, int ship, bool turned);
+		void PlaceShip(int I, int J, int ship, bool turned);
+		void DeleteShip(int I,int J);
+		void Shoot(int I,int J);
 		NetworkStream^ Stream;
 		array<array<Button^>^>^ GameArea;
 		array<array<int>^>^ AreaStat;
@@ -158,6 +197,20 @@ namespace seabattle {
 			this->Ship2Img = (gcnew System::Windows::Forms::PictureBox());
 			this->Ship1Img = (gcnew System::Windows::Forms::PictureBox());
 			this->PointEstLbl = (gcnew System::Windows::Forms::Label());
+			this->lpImg = (gcnew System::Windows::Forms::PictureBox());
+			this->rpImg = (gcnew System::Windows::Forms::PictureBox());
+			this->dpImg = (gcnew System::Windows::Forms::PictureBox());
+			this->upImg = (gcnew System::Windows::Forms::PictureBox());
+			this->singleImg = (gcnew System::Windows::Forms::PictureBox());
+			this->rlpImg = (gcnew System::Windows::Forms::PictureBox());
+			this->udpImg = (gcnew System::Windows::Forms::PictureBox());
+			this->pictureBox5 = (gcnew System::Windows::Forms::PictureBox());
+			this->pictureBox6 = (gcnew System::Windows::Forms::PictureBox());
+			this->turnedShip2 = (gcnew System::Windows::Forms::PictureBox());
+			this->SinglesLeft = (gcnew System::Windows::Forms::Label());
+			this->Ships2Left = (gcnew System::Windows::Forms::Label());
+			this->Ships3Left = (gcnew System::Windows::Forms::Label());
+			this->Ships4Left = (gcnew System::Windows::Forms::Label());
 			(cli::safe_cast<System::ComponentModel::ISupportInitialize^>(this->SrvPortNum))->BeginInit();
 			(cli::safe_cast<System::ComponentModel::ISupportInitialize^>(this->pictureBox1))->BeginInit();
 			(cli::safe_cast<System::ComponentModel::ISupportInitialize^>(this->pictureBox2))->BeginInit();
@@ -167,6 +220,16 @@ namespace seabattle {
 			(cli::safe_cast<System::ComponentModel::ISupportInitialize^>(this->Ship3Img))->BeginInit();
 			(cli::safe_cast<System::ComponentModel::ISupportInitialize^>(this->Ship2Img))->BeginInit();
 			(cli::safe_cast<System::ComponentModel::ISupportInitialize^>(this->Ship1Img))->BeginInit();
+			(cli::safe_cast<System::ComponentModel::ISupportInitialize^>(this->lpImg))->BeginInit();
+			(cli::safe_cast<System::ComponentModel::ISupportInitialize^>(this->rpImg))->BeginInit();
+			(cli::safe_cast<System::ComponentModel::ISupportInitialize^>(this->dpImg))->BeginInit();
+			(cli::safe_cast<System::ComponentModel::ISupportInitialize^>(this->upImg))->BeginInit();
+			(cli::safe_cast<System::ComponentModel::ISupportInitialize^>(this->singleImg))->BeginInit();
+			(cli::safe_cast<System::ComponentModel::ISupportInitialize^>(this->rlpImg))->BeginInit();
+			(cli::safe_cast<System::ComponentModel::ISupportInitialize^>(this->udpImg))->BeginInit();
+			(cli::safe_cast<System::ComponentModel::ISupportInitialize^>(this->pictureBox5))->BeginInit();
+			(cli::safe_cast<System::ComponentModel::ISupportInitialize^>(this->pictureBox6))->BeginInit();
+			(cli::safe_cast<System::ComponentModel::ISupportInitialize^>(this->turnedShip2))->BeginInit();
 			this->SuspendLayout();
 			// 
 			// ClientBtn
@@ -240,7 +303,8 @@ namespace seabattle {
 			this->button1->TabIndex = 8;
 			this->button1->TextImageRelation = System::Windows::Forms::TextImageRelation::ImageAboveText;
 			this->button1->UseVisualStyleBackColor = true;
-			this->button1->Click += gcnew System::EventHandler(this, &mainform::ChangeImg);
+			this->button1->Visible = false;
+			this->button1->Click += gcnew System::EventHandler(this, &mainform::button1_Click);
 			this->button1->DragDrop += gcnew System::Windows::Forms::DragEventHandler(this, &mainform::button1_DragDrop);
 			this->button1->DragOver += gcnew System::Windows::Forms::DragEventHandler(this, &mainform::button1_DragOver);
 			// 
@@ -409,12 +473,172 @@ namespace seabattle {
 			this->PointEstLbl->Size = System::Drawing::Size(35, 13);
 			this->PointEstLbl->TabIndex = 23;
 			this->PointEstLbl->Text = L"label1";
+			this->PointEstLbl->Visible = false;
+			// 
+			// lpImg
+			// 
+			this->lpImg->Image = (cli::safe_cast<System::Drawing::Image^>(resources->GetObject(L"lpImg.Image")));
+			this->lpImg->Location = System::Drawing::Point(12, 349);
+			this->lpImg->Name = L"lpImg";
+			this->lpImg->Size = System::Drawing::Size(16, 16);
+			this->lpImg->TabIndex = 27;
+			this->lpImg->TabStop = false;
+			this->lpImg->Visible = false;
+			// 
+			// rpImg
+			// 
+			this->rpImg->Image = (cli::safe_cast<System::Drawing::Image^>(resources->GetObject(L"rpImg.Image")));
+			this->rpImg->Location = System::Drawing::Point(34, 349);
+			this->rpImg->Name = L"rpImg";
+			this->rpImg->Size = System::Drawing::Size(16, 16);
+			this->rpImg->TabIndex = 26;
+			this->rpImg->TabStop = false;
+			this->rpImg->Visible = false;
+			// 
+			// dpImg
+			// 
+			this->dpImg->Image = (cli::safe_cast<System::Drawing::Image^>(resources->GetObject(L"dpImg.Image")));
+			this->dpImg->Location = System::Drawing::Point(12, 327);
+			this->dpImg->Name = L"dpImg";
+			this->dpImg->Size = System::Drawing::Size(16, 16);
+			this->dpImg->TabIndex = 25;
+			this->dpImg->TabStop = false;
+			this->dpImg->Visible = false;
+			// 
+			// upImg
+			// 
+			this->upImg->Image = (cli::safe_cast<System::Drawing::Image^>(resources->GetObject(L"upImg.Image")));
+			this->upImg->Location = System::Drawing::Point(34, 327);
+			this->upImg->Name = L"upImg";
+			this->upImg->Size = System::Drawing::Size(16, 16);
+			this->upImg->TabIndex = 24;
+			this->upImg->TabStop = false;
+			this->upImg->Visible = false;
+			// 
+			// singleImg
+			// 
+			this->singleImg->Image = (cli::safe_cast<System::Drawing::Image^>(resources->GetObject(L"singleImg.Image")));
+			this->singleImg->Location = System::Drawing::Point(12, 371);
+			this->singleImg->Name = L"singleImg";
+			this->singleImg->Size = System::Drawing::Size(16, 16);
+			this->singleImg->TabIndex = 28;
+			this->singleImg->TabStop = false;
+			this->singleImg->Visible = false;
+			// 
+			// rlpImg
+			// 
+			this->rlpImg->Image = (cli::safe_cast<System::Drawing::Image^>(resources->GetObject(L"rlpImg.Image")));
+			this->rlpImg->Location = System::Drawing::Point(34, 393);
+			this->rlpImg->Name = L"rlpImg";
+			this->rlpImg->Size = System::Drawing::Size(16, 16);
+			this->rlpImg->TabIndex = 30;
+			this->rlpImg->TabStop = false;
+			this->rlpImg->Visible = false;
+			// 
+			// udpImg
+			// 
+			this->udpImg->Image = (cli::safe_cast<System::Drawing::Image^>(resources->GetObject(L"udpImg.Image")));
+			this->udpImg->Location = System::Drawing::Point(34, 371);
+			this->udpImg->Name = L"udpImg";
+			this->udpImg->Size = System::Drawing::Size(16, 16);
+			this->udpImg->TabIndex = 29;
+			this->udpImg->TabStop = false;
+			this->udpImg->Visible = false;
+			// 
+			// pictureBox5
+			// 
+			this->pictureBox5->Image = (cli::safe_cast<System::Drawing::Image^>(resources->GetObject(L"pictureBox5.Image")));
+			this->pictureBox5->Location = System::Drawing::Point(555, 98);
+			this->pictureBox5->Name = L"pictureBox5";
+			this->pictureBox5->Size = System::Drawing::Size(16, 64);
+			this->pictureBox5->SizeMode = System::Windows::Forms::PictureBoxSizeMode::AutoSize;
+			this->pictureBox5->TabIndex = 33;
+			this->pictureBox5->TabStop = false;
+			this->pictureBox5->MouseDown += gcnew System::Windows::Forms::MouseEventHandler(this, &mainform::Ship4Img_MouseDown);
+			this->pictureBox5->MouseMove += gcnew System::Windows::Forms::MouseEventHandler(this, &mainform::Ship4Img_MouseMove);
+			this->pictureBox5->MouseUp += gcnew System::Windows::Forms::MouseEventHandler(this, &mainform::Ship4Img_MouseUp);
+			// 
+			// pictureBox6
+			// 
+			this->pictureBox6->Image = (cli::safe_cast<System::Drawing::Image^>(resources->GetObject(L"pictureBox6.Image")));
+			this->pictureBox6->Location = System::Drawing::Point(533, 92);
+			this->pictureBox6->Name = L"pictureBox6";
+			this->pictureBox6->Size = System::Drawing::Size(16, 48);
+			this->pictureBox6->SizeMode = System::Windows::Forms::PictureBoxSizeMode::AutoSize;
+			this->pictureBox6->TabIndex = 32;
+			this->pictureBox6->TabStop = false;
+			this->pictureBox6->MouseDown += gcnew System::Windows::Forms::MouseEventHandler(this, &mainform::Ship4Img_MouseDown);
+			this->pictureBox6->MouseMove += gcnew System::Windows::Forms::MouseEventHandler(this, &mainform::Ship4Img_MouseMove);
+			this->pictureBox6->MouseUp += gcnew System::Windows::Forms::MouseEventHandler(this, &mainform::Ship4Img_MouseUp);
+			// 
+			// turnedShip2
+			// 
+			this->turnedShip2->Image = (cli::safe_cast<System::Drawing::Image^>(resources->GetObject(L"turnedShip2.Image")));
+			this->turnedShip2->Location = System::Drawing::Point(514, 86);
+			this->turnedShip2->Name = L"turnedShip2";
+			this->turnedShip2->Size = System::Drawing::Size(16, 32);
+			this->turnedShip2->SizeMode = System::Windows::Forms::PictureBoxSizeMode::AutoSize;
+			this->turnedShip2->TabIndex = 31;
+			this->turnedShip2->TabStop = false;
+			this->turnedShip2->MouseDown += gcnew System::Windows::Forms::MouseEventHandler(this, &mainform::Ship4Img_MouseDown);
+			this->turnedShip2->MouseMove += gcnew System::Windows::Forms::MouseEventHandler(this, &mainform::Ship4Img_MouseMove);
+			this->turnedShip2->MouseUp += gcnew System::Windows::Forms::MouseEventHandler(this, &mainform::Ship4Img_MouseUp);
+			// 
+			// SinglesLeft
+			// 
+			this->SinglesLeft->AutoSize = true;
+			this->SinglesLeft->Location = System::Drawing::Point(457, 82);
+			this->SinglesLeft->Name = L"SinglesLeft";
+			this->SinglesLeft->Size = System::Drawing::Size(13, 13);
+			this->SinglesLeft->TabIndex = 34;
+			this->SinglesLeft->Text = L"4";
+			// 
+			// Ships2Left
+			// 
+			this->Ships2Left->AutoSize = true;
+			this->Ships2Left->Location = System::Drawing::Point(457, 105);
+			this->Ships2Left->Name = L"Ships2Left";
+			this->Ships2Left->Size = System::Drawing::Size(13, 13);
+			this->Ships2Left->TabIndex = 35;
+			this->Ships2Left->Text = L"3";
+			// 
+			// Ships3Left
+			// 
+			this->Ships3Left->AutoSize = true;
+			this->Ships3Left->Location = System::Drawing::Point(457, 127);
+			this->Ships3Left->Name = L"Ships3Left";
+			this->Ships3Left->Size = System::Drawing::Size(13, 13);
+			this->Ships3Left->TabIndex = 36;
+			this->Ships3Left->Text = L"2";
+			// 
+			// Ships4Left
+			// 
+			this->Ships4Left->AutoSize = true;
+			this->Ships4Left->Location = System::Drawing::Point(457, 148);
+			this->Ships4Left->Name = L"Ships4Left";
+			this->Ships4Left->Size = System::Drawing::Size(13, 13);
+			this->Ships4Left->TabIndex = 37;
+			this->Ships4Left->Text = L"1";
 			// 
 			// mainform
 			// 
 			this->AutoScaleDimensions = System::Drawing::SizeF(6, 13);
 			this->AutoScaleMode = System::Windows::Forms::AutoScaleMode::Font;
 			this->ClientSize = System::Drawing::Size(952, 441);
+			this->Controls->Add(this->Ships4Left);
+			this->Controls->Add(this->Ships3Left);
+			this->Controls->Add(this->Ships2Left);
+			this->Controls->Add(this->SinglesLeft);
+			this->Controls->Add(this->pictureBox5);
+			this->Controls->Add(this->pictureBox6);
+			this->Controls->Add(this->turnedShip2);
+			this->Controls->Add(this->rlpImg);
+			this->Controls->Add(this->udpImg);
+			this->Controls->Add(this->singleImg);
+			this->Controls->Add(this->lpImg);
+			this->Controls->Add(this->rpImg);
+			this->Controls->Add(this->dpImg);
+			this->Controls->Add(this->upImg);
 			this->Controls->Add(this->PointEstLbl);
 			this->Controls->Add(this->Ship1Img);
 			this->Controls->Add(this->Ship2Img);
@@ -449,6 +673,16 @@ namespace seabattle {
 			(cli::safe_cast<System::ComponentModel::ISupportInitialize^>(this->Ship3Img))->EndInit();
 			(cli::safe_cast<System::ComponentModel::ISupportInitialize^>(this->Ship2Img))->EndInit();
 			(cli::safe_cast<System::ComponentModel::ISupportInitialize^>(this->Ship1Img))->EndInit();
+			(cli::safe_cast<System::ComponentModel::ISupportInitialize^>(this->lpImg))->EndInit();
+			(cli::safe_cast<System::ComponentModel::ISupportInitialize^>(this->rpImg))->EndInit();
+			(cli::safe_cast<System::ComponentModel::ISupportInitialize^>(this->dpImg))->EndInit();
+			(cli::safe_cast<System::ComponentModel::ISupportInitialize^>(this->upImg))->EndInit();
+			(cli::safe_cast<System::ComponentModel::ISupportInitialize^>(this->singleImg))->EndInit();
+			(cli::safe_cast<System::ComponentModel::ISupportInitialize^>(this->rlpImg))->EndInit();
+			(cli::safe_cast<System::ComponentModel::ISupportInitialize^>(this->udpImg))->EndInit();
+			(cli::safe_cast<System::ComponentModel::ISupportInitialize^>(this->pictureBox5))->EndInit();
+			(cli::safe_cast<System::ComponentModel::ISupportInitialize^>(this->pictureBox6))->EndInit();
+			(cli::safe_cast<System::ComponentModel::ISupportInitialize^>(this->turnedShip2))->EndInit();
 			this->ResumeLayout(false);
 			this->PerformLayout();
 
@@ -467,5 +701,6 @@ namespace seabattle {
 	private: System::Void Ship4Img_MouseUp(System::Object^  sender, System::Windows::Forms::MouseEventArgs^  e);
 	private: System::Void button1_DragDrop(System::Object^  sender, System::Windows::Forms::DragEventArgs^  e);
 	private: System::Void button1_DragOver(System::Object^  sender, System::Windows::Forms::DragEventArgs^  e);
+	private: System::Void button1_Click(System::Object^  sender, System::EventArgs^  e);
 };
 }
