@@ -102,6 +102,9 @@ namespace seabattle {
 			static Image^ Single_Destroyed;
 			static Image^ Miss;
 			static Image^ Ship4;
+			static Image^ Ship3;
+			static Image^ Ship2;
+			static Image^ Single;
 		};
 		void Server();
 		void SetStatusLbl(System::String^ msg);
@@ -368,6 +371,9 @@ namespace seabattle {
 			this->Ship3Img->SizeMode = System::Windows::Forms::PictureBoxSizeMode::AutoSize;
 			this->Ship3Img->TabIndex = 20;
 			this->Ship3Img->TabStop = false;
+			this->Ship3Img->MouseDown += gcnew System::Windows::Forms::MouseEventHandler(this, &mainform::Ship4Img_MouseDown);
+			this->Ship3Img->MouseMove += gcnew System::Windows::Forms::MouseEventHandler(this, &mainform::Ship4Img_MouseMove);
+			this->Ship3Img->MouseUp += gcnew System::Windows::Forms::MouseEventHandler(this, &mainform::Ship4Img_MouseUp);
 			// 
 			// Ship2Img
 			// 
@@ -378,6 +384,9 @@ namespace seabattle {
 			this->Ship2Img->SizeMode = System::Windows::Forms::PictureBoxSizeMode::AutoSize;
 			this->Ship2Img->TabIndex = 21;
 			this->Ship2Img->TabStop = false;
+			this->Ship2Img->MouseDown += gcnew System::Windows::Forms::MouseEventHandler(this, &mainform::Ship4Img_MouseDown);
+			this->Ship2Img->MouseMove += gcnew System::Windows::Forms::MouseEventHandler(this, &mainform::Ship4Img_MouseMove);
+			this->Ship2Img->MouseUp += gcnew System::Windows::Forms::MouseEventHandler(this, &mainform::Ship4Img_MouseUp);
 			// 
 			// Ship1Img
 			// 
@@ -388,6 +397,9 @@ namespace seabattle {
 			this->Ship1Img->SizeMode = System::Windows::Forms::PictureBoxSizeMode::AutoSize;
 			this->Ship1Img->TabIndex = 22;
 			this->Ship1Img->TabStop = false;
+			this->Ship1Img->MouseDown += gcnew System::Windows::Forms::MouseEventHandler(this, &mainform::Ship4Img_MouseDown);
+			this->Ship1Img->MouseMove += gcnew System::Windows::Forms::MouseEventHandler(this, &mainform::Ship4Img_MouseMove);
+			this->Ship1Img->MouseUp += gcnew System::Windows::Forms::MouseEventHandler(this, &mainform::Ship4Img_MouseUp);
 			// 
 			// PointEstLbl
 			// 

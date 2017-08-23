@@ -393,12 +393,29 @@ System::Void seabattle::mainform::button1_DragDrop(System::Object ^ sender, Syst
 			if (item != nullptr) {
 				//TODO: вставляем кораблик!
 
-				//Test
+				//Test--------------------------------------------------
 				Button^ btn = dynamic_cast<Button^>(sender);
 				//btn->Image = item->Image;
-				if (item->Image->Width == 64)
+				//if (item->Image->Width == 64)
+				//	btn->Image = ImageProvider::Ship4;
+				switch (item->Image->Width) {
+				case 16:
+					btn->Image = ImageProvider::Single;
+					break;
+				case 32:
+					btn->Image = ImageProvider::Ship2;
+					break;
+				case 48:
+					btn->Image = ImageProvider::Ship3;
+					break;
+				case 64:
 					btn->Image = ImageProvider::Ship4;
-				//
+					break;
+				default:
+					btn->Image = ImageProvider::Miss;
+					break;
+				}
+				//------------------------------------------------------
 			}
 		}
 	}
@@ -424,4 +441,7 @@ seabattle::mainform::ImageProvider::ImageProvider()
 	Single_Destroyed = (safe_cast<System::Drawing::Image^>(Resource->GetObject("pictureBox3.Image")));
 	Miss = (safe_cast<System::Drawing::Image^>(Resource->GetObject("pictureBox4.Image")));
 	Ship4 = (safe_cast<System::Drawing::Image^>(Resource->GetObject("Ship4Img.Image")));
+	Ship3 = (safe_cast<System::Drawing::Image^>(Resource->GetObject("Ship3Img.Image")));
+	Ship2 = (safe_cast<System::Drawing::Image^>(Resource->GetObject("Ship2Img.Image")));
+	Single = (safe_cast<System::Drawing::Image^>(Resource->GetObject("Ship1Img.Image")));
 }
