@@ -22,9 +22,6 @@ namespace seabattle {
 		mainform(void)
 		{
 			InitializeComponent();
-			//
-			//TODO: добавьте код конструктора
-			//
 		}
 
 	protected:
@@ -111,7 +108,9 @@ namespace seabattle {
 			ClientConnected = 9,
 			MyTurn = 10,
 			EnemyTurn = 11,
-			ClientGameStart=12
+			ClientGameStart = 12,
+			Lose = 13,
+			Win = 14
 		};
 		//Перечисление возможных статусов клетки
 		enum class CellIndex : int {
@@ -191,13 +190,13 @@ namespace seabattle {
 		//Функция обработка нажатия по полю противника
 		void Shoot(int I, int J);
 		//Проверка, убил ли наш корабль противник
-		int TryKill(int I, int J, int* ship, bool* turned,int* sI,int* sJ);
+		int TryKill(int I, int J, int* ship, bool* turned, int* sI, int* sJ);
 		//Обновление картинки клетки в соответствии со статусом поля
-		void SyncStat(int I, int J,bool isEnemyArea);
+		void SyncStat(int I, int J, bool isEnemyArea);
 		//Обновление поля противника, в случае смерти его корабля целиком
-		void Kill(int I, int J,int ship,bool turned);
+		void Kill(int I, int J, int ship, bool turned);
 		//Установка еденичного промаха
-		void SetMiss(int I,int J);
+		void SetMiss(int I, int J);
 		//Установка на нашем поле промахов вокруг нашего убитого кораблся
 		void SetMiss(int I, int J, int ship, bool turned);
 		int LastHitI;
@@ -296,7 +295,7 @@ namespace seabattle {
 			// 
 			// ClientBtn
 			// 
-			this->ClientBtn->Location = System::Drawing::Point(53, 24);
+			this->ClientBtn->Location = System::Drawing::Point(29, 29);
 			this->ClientBtn->Name = L"ClientBtn";
 			this->ClientBtn->Size = System::Drawing::Size(75, 23);
 			this->ClientBtn->TabIndex = 0;
@@ -306,7 +305,7 @@ namespace seabattle {
 			// 
 			// SrvBtn
 			// 
-			this->SrvBtn->Location = System::Drawing::Point(53, 53);
+			this->SrvBtn->Location = System::Drawing::Point(29, 58);
 			this->SrvBtn->Name = L"SrvBtn";
 			this->SrvBtn->Size = System::Drawing::Size(75, 23);
 			this->SrvBtn->TabIndex = 1;
@@ -316,7 +315,7 @@ namespace seabattle {
 			// 
 			// PlayerNameEd
 			// 
-			this->PlayerNameEd->Location = System::Drawing::Point(28, 120);
+			this->PlayerNameEd->Location = System::Drawing::Point(12, 94);
 			this->PlayerNameEd->Name = L"PlayerNameEd";
 			this->PlayerNameEd->Size = System::Drawing::Size(120, 20);
 			this->PlayerNameEd->TabIndex = 2;
@@ -325,7 +324,7 @@ namespace seabattle {
 			// 
 			// SrvPortNum
 			// 
-			this->SrvPortNum->Location = System::Drawing::Point(28, 146);
+			this->SrvPortNum->Location = System::Drawing::Point(12, 120);
 			this->SrvPortNum->Maximum = System::Decimal(gcnew cli::array< System::Int32 >(4) { 32000, 0, 0, 0 });
 			this->SrvPortNum->Name = L"SrvPortNum";
 			this->SrvPortNum->Size = System::Drawing::Size(120, 20);
@@ -336,7 +335,7 @@ namespace seabattle {
 			// StatusLbl
 			// 
 			this->StatusLbl->AutoSize = true;
-			this->StatusLbl->Location = System::Drawing::Point(50, 189);
+			this->StatusLbl->Location = System::Drawing::Point(12, 11);
 			this->StatusLbl->Name = L"StatusLbl";
 			this->StatusLbl->Size = System::Drawing::Size(35, 13);
 			this->StatusLbl->TabIndex = 4;
@@ -346,7 +345,7 @@ namespace seabattle {
 			// pictureBox1
 			// 
 			this->pictureBox1->Image = (cli::safe_cast<System::Drawing::Image^>(resources->GetObject(L"pictureBox1.Image")));
-			this->pictureBox1->Location = System::Drawing::Point(34, 236);
+			this->pictureBox1->Location = System::Drawing::Point(869, 261);
 			this->pictureBox1->Name = L"pictureBox1";
 			this->pictureBox1->Size = System::Drawing::Size(16, 16);
 			this->pictureBox1->TabIndex = 5;
@@ -359,7 +358,7 @@ namespace seabattle {
 			this->button1->AutoSize = true;
 			this->button1->BackgroundImageLayout = System::Windows::Forms::ImageLayout::Center;
 			this->button1->Image = (cli::safe_cast<System::Drawing::Image^>(resources->GetObject(L"button1.Image")));
-			this->button1->Location = System::Drawing::Point(12, 258);
+			this->button1->Location = System::Drawing::Point(847, 283);
 			this->button1->Name = L"button1";
 			this->button1->Size = System::Drawing::Size(53, 43);
 			this->button1->TabIndex = 8;
@@ -373,7 +372,7 @@ namespace seabattle {
 			// pictureBox2
 			// 
 			this->pictureBox2->Image = (cli::safe_cast<System::Drawing::Image^>(resources->GetObject(L"pictureBox2.Image")));
-			this->pictureBox2->Location = System::Drawing::Point(12, 236);
+			this->pictureBox2->Location = System::Drawing::Point(847, 261);
 			this->pictureBox2->Name = L"pictureBox2";
 			this->pictureBox2->Size = System::Drawing::Size(16, 16);
 			this->pictureBox2->TabIndex = 9;
@@ -382,7 +381,7 @@ namespace seabattle {
 			// 
 			// StartSrvBtn
 			// 
-			this->StartSrvBtn->Location = System::Drawing::Point(53, 82);
+			this->StartSrvBtn->Location = System::Drawing::Point(29, 201);
 			this->StartSrvBtn->Name = L"StartSrvBtn";
 			this->StartSrvBtn->Size = System::Drawing::Size(75, 23);
 			this->StartSrvBtn->TabIndex = 10;
@@ -404,7 +403,7 @@ namespace seabattle {
 			// MyReadyFlag
 			// 
 			this->MyReadyFlag->AutoSize = true;
-			this->MyReadyFlag->Location = System::Drawing::Point(240, 349);
+			this->MyReadyFlag->Location = System::Drawing::Point(29, 260);
 			this->MyReadyFlag->Name = L"MyReadyFlag";
 			this->MyReadyFlag->Size = System::Drawing::Size(63, 17);
 			this->MyReadyFlag->TabIndex = 12;
@@ -417,7 +416,7 @@ namespace seabattle {
 			// 
 			this->EnemyReadyFlag->AutoSize = true;
 			this->EnemyReadyFlag->Enabled = false;
-			this->EnemyReadyFlag->Location = System::Drawing::Point(240, 372);
+			this->EnemyReadyFlag->Location = System::Drawing::Point(29, 283);
 			this->EnemyReadyFlag->Name = L"EnemyReadyFlag";
 			this->EnemyReadyFlag->Size = System::Drawing::Size(80, 17);
 			this->EnemyReadyFlag->TabIndex = 13;
@@ -427,16 +426,16 @@ namespace seabattle {
 			// 
 			// HostNameEdit
 			// 
-			this->HostNameEdit->Location = System::Drawing::Point(106, 232);
+			this->HostNameEdit->Location = System::Drawing::Point(12, 146);
 			this->HostNameEdit->Name = L"HostNameEdit";
-			this->HostNameEdit->Size = System::Drawing::Size(100, 20);
+			this->HostNameEdit->Size = System::Drawing::Size(120, 20);
 			this->HostNameEdit->TabIndex = 14;
 			this->HostNameEdit->Text = L"127.0.0.1";
 			this->HostNameEdit->Visible = false;
 			// 
 			// ConnectBtn
 			// 
-			this->ConnectBtn->Location = System::Drawing::Point(131, 82);
+			this->ConnectBtn->Location = System::Drawing::Point(29, 172);
 			this->ConnectBtn->Name = L"ConnectBtn";
 			this->ConnectBtn->Size = System::Drawing::Size(75, 23);
 			this->ConnectBtn->TabIndex = 15;
@@ -447,7 +446,7 @@ namespace seabattle {
 			// 
 			// StartGameBtn
 			// 
-			this->StartGameBtn->Location = System::Drawing::Point(228, 314);
+			this->StartGameBtn->Location = System::Drawing::Point(29, 230);
 			this->StartGameBtn->Name = L"StartGameBtn";
 			this->StartGameBtn->Size = System::Drawing::Size(75, 23);
 			this->StartGameBtn->TabIndex = 16;
@@ -459,7 +458,7 @@ namespace seabattle {
 			// pictureBox3
 			// 
 			this->pictureBox3->Image = (cli::safe_cast<System::Drawing::Image^>(resources->GetObject(L"pictureBox3.Image")));
-			this->pictureBox3->Location = System::Drawing::Point(69, 372);
+			this->pictureBox3->Location = System::Drawing::Point(904, 397);
 			this->pictureBox3->Name = L"pictureBox3";
 			this->pictureBox3->Size = System::Drawing::Size(16, 16);
 			this->pictureBox3->TabIndex = 17;
@@ -469,7 +468,7 @@ namespace seabattle {
 			// pictureBox4
 			// 
 			this->pictureBox4->Image = (cli::safe_cast<System::Drawing::Image^>(resources->GetObject(L"pictureBox4.Image")));
-			this->pictureBox4->Location = System::Drawing::Point(53, 236);
+			this->pictureBox4->Location = System::Drawing::Point(888, 261);
 			this->pictureBox4->Name = L"pictureBox4";
 			this->pictureBox4->Size = System::Drawing::Size(16, 16);
 			this->pictureBox4->TabIndex = 18;
@@ -544,7 +543,7 @@ namespace seabattle {
 			// lpImg
 			// 
 			this->lpImg->Image = (cli::safe_cast<System::Drawing::Image^>(resources->GetObject(L"lpImg.Image")));
-			this->lpImg->Location = System::Drawing::Point(12, 349);
+			this->lpImg->Location = System::Drawing::Point(847, 374);
 			this->lpImg->Name = L"lpImg";
 			this->lpImg->Size = System::Drawing::Size(16, 16);
 			this->lpImg->TabIndex = 27;
@@ -554,7 +553,7 @@ namespace seabattle {
 			// rpImg
 			// 
 			this->rpImg->Image = (cli::safe_cast<System::Drawing::Image^>(resources->GetObject(L"rpImg.Image")));
-			this->rpImg->Location = System::Drawing::Point(34, 349);
+			this->rpImg->Location = System::Drawing::Point(869, 374);
 			this->rpImg->Name = L"rpImg";
 			this->rpImg->Size = System::Drawing::Size(16, 16);
 			this->rpImg->TabIndex = 26;
@@ -564,7 +563,7 @@ namespace seabattle {
 			// dpImg
 			// 
 			this->dpImg->Image = (cli::safe_cast<System::Drawing::Image^>(resources->GetObject(L"dpImg.Image")));
-			this->dpImg->Location = System::Drawing::Point(12, 327);
+			this->dpImg->Location = System::Drawing::Point(847, 352);
 			this->dpImg->Name = L"dpImg";
 			this->dpImg->Size = System::Drawing::Size(16, 16);
 			this->dpImg->TabIndex = 25;
@@ -574,7 +573,7 @@ namespace seabattle {
 			// upImg
 			// 
 			this->upImg->Image = (cli::safe_cast<System::Drawing::Image^>(resources->GetObject(L"upImg.Image")));
-			this->upImg->Location = System::Drawing::Point(34, 327);
+			this->upImg->Location = System::Drawing::Point(869, 352);
 			this->upImg->Name = L"upImg";
 			this->upImg->Size = System::Drawing::Size(16, 16);
 			this->upImg->TabIndex = 24;
@@ -584,7 +583,7 @@ namespace seabattle {
 			// singleImg
 			// 
 			this->singleImg->Image = (cli::safe_cast<System::Drawing::Image^>(resources->GetObject(L"singleImg.Image")));
-			this->singleImg->Location = System::Drawing::Point(12, 371);
+			this->singleImg->Location = System::Drawing::Point(847, 396);
 			this->singleImg->Name = L"singleImg";
 			this->singleImg->Size = System::Drawing::Size(16, 16);
 			this->singleImg->TabIndex = 28;
@@ -594,7 +593,7 @@ namespace seabattle {
 			// rlpImg
 			// 
 			this->rlpImg->Image = (cli::safe_cast<System::Drawing::Image^>(resources->GetObject(L"rlpImg.Image")));
-			this->rlpImg->Location = System::Drawing::Point(34, 393);
+			this->rlpImg->Location = System::Drawing::Point(869, 418);
 			this->rlpImg->Name = L"rlpImg";
 			this->rlpImg->Size = System::Drawing::Size(16, 16);
 			this->rlpImg->TabIndex = 30;
@@ -604,7 +603,7 @@ namespace seabattle {
 			// udpImg
 			// 
 			this->udpImg->Image = (cli::safe_cast<System::Drawing::Image^>(resources->GetObject(L"udpImg.Image")));
-			this->udpImg->Location = System::Drawing::Point(34, 371);
+			this->udpImg->Location = System::Drawing::Point(869, 396);
 			this->udpImg->Name = L"udpImg";
 			this->udpImg->Size = System::Drawing::Size(16, 16);
 			this->udpImg->TabIndex = 29;
@@ -696,7 +695,7 @@ namespace seabattle {
 			// pictureBox7
 			// 
 			this->pictureBox7->Image = (cli::safe_cast<System::Drawing::Image^>(resources->GetObject(L"pictureBox7.Image")));
-			this->pictureBox7->Location = System::Drawing::Point(91, 394);
+			this->pictureBox7->Location = System::Drawing::Point(926, 419);
 			this->pictureBox7->Name = L"pictureBox7";
 			this->pictureBox7->Size = System::Drawing::Size(16, 16);
 			this->pictureBox7->TabIndex = 43;
@@ -706,7 +705,7 @@ namespace seabattle {
 			// pictureBox8
 			// 
 			this->pictureBox8->Image = (cli::safe_cast<System::Drawing::Image^>(resources->GetObject(L"pictureBox8.Image")));
-			this->pictureBox8->Location = System::Drawing::Point(91, 372);
+			this->pictureBox8->Location = System::Drawing::Point(926, 397);
 			this->pictureBox8->Name = L"pictureBox8";
 			this->pictureBox8->Size = System::Drawing::Size(16, 16);
 			this->pictureBox8->TabIndex = 42;
@@ -716,7 +715,7 @@ namespace seabattle {
 			// pictureBox9
 			// 
 			this->pictureBox9->Image = (cli::safe_cast<System::Drawing::Image^>(resources->GetObject(L"pictureBox9.Image")));
-			this->pictureBox9->Location = System::Drawing::Point(69, 350);
+			this->pictureBox9->Location = System::Drawing::Point(904, 375);
 			this->pictureBox9->Name = L"pictureBox9";
 			this->pictureBox9->Size = System::Drawing::Size(16, 16);
 			this->pictureBox9->TabIndex = 41;
@@ -726,7 +725,7 @@ namespace seabattle {
 			// pictureBox10
 			// 
 			this->pictureBox10->Image = (cli::safe_cast<System::Drawing::Image^>(resources->GetObject(L"pictureBox10.Image")));
-			this->pictureBox10->Location = System::Drawing::Point(91, 350);
+			this->pictureBox10->Location = System::Drawing::Point(926, 375);
 			this->pictureBox10->Name = L"pictureBox10";
 			this->pictureBox10->Size = System::Drawing::Size(16, 16);
 			this->pictureBox10->TabIndex = 40;
@@ -736,7 +735,7 @@ namespace seabattle {
 			// pictureBox11
 			// 
 			this->pictureBox11->Image = (cli::safe_cast<System::Drawing::Image^>(resources->GetObject(L"pictureBox11.Image")));
-			this->pictureBox11->Location = System::Drawing::Point(69, 328);
+			this->pictureBox11->Location = System::Drawing::Point(904, 353);
 			this->pictureBox11->Name = L"pictureBox11";
 			this->pictureBox11->Size = System::Drawing::Size(16, 16);
 			this->pictureBox11->TabIndex = 39;
@@ -746,7 +745,7 @@ namespace seabattle {
 			// pictureBox12
 			// 
 			this->pictureBox12->Image = (cli::safe_cast<System::Drawing::Image^>(resources->GetObject(L"pictureBox12.Image")));
-			this->pictureBox12->Location = System::Drawing::Point(91, 328);
+			this->pictureBox12->Location = System::Drawing::Point(926, 353);
 			this->pictureBox12->Name = L"pictureBox12";
 			this->pictureBox12->Size = System::Drawing::Size(16, 16);
 			this->pictureBox12->TabIndex = 38;
@@ -756,9 +755,11 @@ namespace seabattle {
 			// TurnLbl
 			// 
 			this->TurnLbl->AutoSize = true;
-			this->TurnLbl->Location = System::Drawing::Point(445, 34);
+			this->TurnLbl->Font = (gcnew System::Drawing::Font(L"Microsoft Sans Serif", 10, System::Drawing::FontStyle::Regular, System::Drawing::GraphicsUnit::Point,
+				static_cast<System::Byte>(204)));
+			this->TurnLbl->Location = System::Drawing::Point(445, 9);
 			this->TurnLbl->Name = L"TurnLbl";
-			this->TurnLbl->Size = System::Drawing::Size(35, 13);
+			this->TurnLbl->Size = System::Drawing::Size(46, 17);
 			this->TurnLbl->TabIndex = 44;
 			this->TurnLbl->Text = L"label1";
 			this->TurnLbl->Visible = false;
@@ -767,7 +768,7 @@ namespace seabattle {
 			// 
 			this->AutoScaleDimensions = System::Drawing::SizeF(6, 13);
 			this->AutoScaleMode = System::Windows::Forms::AutoScaleMode::Font;
-			this->ClientSize = System::Drawing::Size(952, 441);
+			this->ClientSize = System::Drawing::Size(804, 318);
 			this->Controls->Add(this->TurnLbl);
 			this->Controls->Add(this->pictureBox7);
 			this->Controls->Add(this->pictureBox8);
@@ -811,6 +812,7 @@ namespace seabattle {
 			this->Controls->Add(this->PlayerNameEd);
 			this->Controls->Add(this->SrvBtn);
 			this->Controls->Add(this->ClientBtn);
+			this->FormBorderStyle = System::Windows::Forms::FormBorderStyle::FixedSingle;
 			this->Name = L"mainform";
 			this->Text = L"Sea Battle";
 			this->Load += gcnew System::EventHandler(this, &mainform::mainform_Load);

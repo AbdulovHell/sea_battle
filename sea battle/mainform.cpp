@@ -86,6 +86,11 @@ void seabattle::mainform::Server()
 						msg[5] = sI;
 						msg[6] = sJ;
 						Stream->Write(msg, 0, msg->Length);
+
+						if (AreaStat[0][1] == 4 && AreaStat[0][2] == 3 && AreaStat[0][3] == 2 && AreaStat[0][4] == 1) {
+							prgstat = ProgStat::Lose;
+							this->Invoke(gcnew Action(this, &mainform::UpdateWnd));
+						}
 					}
 					break;
 					case 51:
@@ -106,6 +111,12 @@ void seabattle::mainform::Server()
 							prgstat = ProgStat::EnemyTurn;
 							this->Invoke(gcnew Action(this, &mainform::UpdateWnd));
 						}
+					}
+					break;
+					case 99:
+					{
+						prgstat = ProgStat::Win;
+						this->Invoke(gcnew Action(this, &mainform::UpdateWnd));
 					}
 					break;
 					}
@@ -169,7 +180,7 @@ void seabattle::mainform::PrepareArea(array<array<Button^>^>^ %area, array<array
 			//char name[3] = { 'A' + j - 1 ,'0' + i,0 };
 			//area[i][j]->Name = gcnew String(name);
 			if (isEnemyArea)
-				area[i][j]->Location = System::Drawing::Point(500 + i * 22, 40 + j * 22);
+				area[i][j]->Location = System::Drawing::Point(200 + 22 * _collomns + 50 + i * 22, 40 + j * 22);
 			else {
 				area[i][j]->Location = System::Drawing::Point(200 + i * 22, 40 + j * 22);
 				area[i][j]->AllowDrop = true;
@@ -381,6 +392,34 @@ void seabattle::mainform::UpdateWnd()
 		UpdateWnd();
 	}
 	break;
+	case ProgStat::Lose:
+	{
+		for (int i = 1; i < _strings; i++)
+			for (int j = 1; j < _collomns; j++)
+				EnemyArea[i][j]->Enabled = false;
+		
+		TurnLbl->Text = "You lose";
+
+		array<Byte>^ msg = gcnew array<Byte>(5);
+		msg[0] = 99;
+		msg[1] = 1;
+		msg[2] = 1;
+		msg[3] = 1;
+		msg[4] = 1;
+		Stream->Write(msg, 0, msg->Length);
+	}
+	break;
+	case ProgStat::Win:
+	{
+		//TODO: возможно, обменяться расположениями кораблей?
+
+		for (int i = 1; i < _strings; i++)
+			for (int j = 1; j < _collomns; j++)
+				EnemyArea[i][j]->Enabled = false;
+
+		TurnLbl->Text = "You win!";
+	}
+	break;
 	}
 }
 
@@ -418,7 +457,7 @@ void seabattle::mainform::Client()
 		}
 	}
 	if (TCPclient == nullptr) {
-		//TODO: обработать ошибк
+		this->Invoke(gcnew Action<String^>(this, &mainform::SetStatusLbl), "Connection error");
 	}
 
 	Stream = TCPclient->GetStream();
@@ -486,6 +525,11 @@ void seabattle::mainform::Client()
 					msg[6] = sJ;
 
 					Stream->Write(msg, 0, msg->Length);
+
+					if (AreaStat[0][1] == 4 && AreaStat[0][2] == 3 && AreaStat[0][3] == 2 && AreaStat[0][4] == 1) {
+						prgstat = ProgStat::Lose;
+						this->Invoke(gcnew Action(this, &mainform::UpdateWnd));
+					}
 				}
 				break;
 				case 51:
@@ -506,6 +550,12 @@ void seabattle::mainform::Client()
 						prgstat = ProgStat::EnemyTurn;
 						this->Invoke(gcnew Action(this, &mainform::UpdateWnd));
 					}
+				}
+				break;
+				case 99:
+				{
+					prgstat = ProgStat::Win;
+					this->Invoke(gcnew Action(this, &mainform::UpdateWnd));
 				}
 				break;
 				}
@@ -750,6 +800,7 @@ int seabattle::mainform::TryKill(int I, int J, int* ship, bool* turned, int* sI,
 			*turned = false;
 		*ship = destroyed_parts + 1;
 		SetMiss(*sI, *sJ, *ship, *turned);
+		AreaStat[0][*ship]++;
 		return 1;
 	}
 }
@@ -959,8 +1010,10 @@ System::Void seabattle::mainform::SrvBtn_Click(System::Object ^ sender, System::
 
 System::Void seabattle::mainform::MyReadyFlag_CheckedChanged(System::Object ^ sender, System::EventArgs ^ e)
 {
-	if (AreaStat[0][1] || AreaStat[0][2] || AreaStat[0][3] || AreaStat[0][4]) return;
-
+	if (AreaStat[0][1] || AreaStat[0][2] || AreaStat[0][3] || AreaStat[0][4]) {
+		MyReadyFlag->Checked = false;
+		return;
+	}
 	array<Byte>^ msg = gcnew array<Byte>(2);
 	msg[0] = 11;
 	msg[1] = MyReadyFlag->Checked;
@@ -1025,7 +1078,7 @@ System::Void seabattle::mainform::Ship4Img_MouseMove(System::Object ^ sender, Sy
 	if ((e->Button & System::Windows::Forms::MouseButtons::Left) == System::Windows::Forms::MouseButtons::Left) {
 		if (dragBoxFromMouseDown != Rectangle::Empty && !dragBoxFromMouseDown.Contains(e->X, e->Y)) {
 			screenOffset = SystemInformation::WorkingArea.Location;
-			DragDropEffects dropEffect = this->Ship4Img->DoDragDrop(this->tempImg, static_cast<DragDropEffects>(DragDropEffects::Copy));
+			DragDropEffects dropEffect = dynamic_cast<PictureBox^>(sender)->DoDragDrop(this->tempImg, static_cast<DragDropEffects>(DragDropEffects::Copy));
 		}
 	}
 }
@@ -1041,7 +1094,6 @@ System::Void seabattle::mainform::button1_DragDrop(System::Object ^ sender, Syst
 		PictureBox^ item = dynamic_cast<PictureBox^>(e->Data->GetData(PictureBox::typeid));
 		if (e->Effect == DragDropEffects::Copy) {
 			if (item != nullptr) {
-				//TODO: вставляем кораблик!
 				int I = 0, J = 0;
 				Button^ btn = dynamic_cast<Button^>(sender);
 				for (int i = 0; i < 11; i++) {
