@@ -57,27 +57,63 @@ void seabattle::mainform::Server()
 						System::Text::Encoding::ASCII->GetBytes(PlayerNameEd->Text->ToCharArray(), 0, len, msg, 2);
 						Stream->Write(msg, 0, msg->Length);
 					}
+					break;
 					case 50:
 					{
-						int I= bytes[1], J = bytes[2];
-						if (AreaStat[I][J] > 3) {
-							array<Byte>^ msg = gcnew array<Byte>(2);
-							msg[0] = 51;
-							msg[1] = 1;
-							Stream->Write(msg, 0, msg->Length);
+						int I = bytes[1], J = bytes[2];
 
-							AreaStat[I][J]
+						array<Byte>^ msg = gcnew array<Byte>(7);
+						msg[0] = 51;
 
-							prgstat=ProgStat::ServerTurn;
+						int ship = 0;
+						bool turned = false;
+						int sI = 0, sJ = 0;
+
+						if (AreaStat[I][J] > 12) {
+							msg[1] = 1;	//hit
+							msg[2] = TryKill(I, J, &ship, &turned, &sI, &sJ);
+						}
+						else {
+							msg[1] = 0;	//miss
+							msg[2] = 0;
+							SetMiss(I, J);
+
+							prgstat = ProgStat::MyTurn;
+							this->Invoke(gcnew Action(this, &mainform::UpdateWnd));
+						}
+						msg[3] = ship;
+						msg[4] = turned;
+						msg[5] = sI;
+						msg[6] = sJ;
+						Stream->Write(msg, 0, msg->Length);
+					}
+					break;
+					case 51:
+					{
+						if (bytes[1]) {	//hit
+							if (bytes[2]) {	//destroyed
+								Kill(bytes[5], bytes[6], bytes[3], bytes[4]);
+							}
+							else {	//wounded
+								EnemyStat[LastHitI][LastHitJ] = 1;
+								SyncStat(LastHitI, LastHitJ, true);
+							}
+						}
+						else {	//miss
+							EnemyStat[LastHitI][LastHitJ] = 2;
+							SyncStat(LastHitI, LastHitJ, true);
+
+							prgstat = ProgStat::EnemyTurn;
 							this->Invoke(gcnew Action(this, &mainform::UpdateWnd));
 						}
 					}
-						break;
 					break;
 					}
 			} while (1);
 		}
-		catch (...) {}
+		catch (SocketException^ e) {
+
+		}
 		try {
 			TCPclient->Close();
 		}
@@ -143,8 +179,10 @@ void seabattle::mainform::PrepareArea(array<array<Button^>^>^ %area, array<array
 			area[i][j]->Size = System::Drawing::Size(22, 22);
 			area[i][j]->TabStop = false;
 
-			if (!isEnemyArea)	area[i][j]->Click += gcnew System::EventHandler(this, &mainform::ChangeImg);
-			else area[i][j]->Click += gcnew System::EventHandler(this, &mainform::button1_Click);
+			if (!isEnemyArea)
+				area[i][j]->Click += gcnew System::EventHandler(this, &mainform::ChangeImg);
+			else
+				area[i][j]->Click += gcnew System::EventHandler(this, &mainform::button1_Click);
 			this->Controls->Add(area[i][j]);
 		}
 	}
@@ -188,8 +226,13 @@ void seabattle::mainform::UpdateWnd()
 		Ship2Img->Visible = true;
 		Ship3Img->Visible = true;
 		Ship4Img->Visible = true;
-		//PointEstLbl->Visible = true;
-		//PointEstLbl->Text = "20";
+		turnedShip2->Visible = true;
+		pictureBox6->Visible = true;
+		pictureBox5->Visible = true;
+		SinglesLeft->Visible = true;
+		Ships2Left->Visible = true;
+		Ships3Left->Visible = true;
+		Ships4Left->Visible = true;
 
 		AreaStat[0][1] = 4;
 		AreaStat[0][2] = 3;
@@ -221,11 +264,41 @@ void seabattle::mainform::UpdateWnd()
 				GameArea[i][j]->Click -= gcnew System::EventHandler(this, &mainform::ChangeImg);
 		//start game
 
+		EnemyReadyFlag->Visible = false;
+		MyReadyFlag->Visible = false;
+		StartGameBtn->Visible = false;
+		StartGameBtn->Enabled = false;
+
+		array<Byte>^ msg = gcnew array<Byte>(5);
+		msg[0] = 15;
+		msg[1] = 1;
+		msg[2] = 1;
+		msg[3] = 1;
+		msg[4] = 1;
+		Stream->Write(msg, 0, msg->Length);
+
+		prgstat = ProgStat::MyTurn;
+		UpdateWnd();
 	}
 	break;
-	case ProgStat::ServerPlay:
+	case ProgStat::MyTurn:
 	{
-		//
+		//Enable enemy area
+		for (int i = 1; i < _strings; i++)
+			for (int j = 1; j < _collomns; j++)
+				EnemyArea[i][j]->Enabled = true;
+		TurnLbl->Visible = true;
+		TurnLbl->Text = "You turn";
+	}
+	break;
+	case ProgStat::EnemyTurn:
+	{
+		//Disable enemy area
+		for (int i = 1; i < _strings; i++)
+			for (int j = 1; j < _collomns; j++)
+				EnemyArea[i][j]->Enabled = false;
+		TurnLbl->Visible = true;
+		TurnLbl->Text = "Enemy turn";
 	}
 	break;
 	case ProgStat::ClientSetup:
@@ -264,9 +337,48 @@ void seabattle::mainform::UpdateWnd()
 		AreaStat[0][3] = 2;
 		AreaStat[0][4] = 1;
 
+		Ship1Img->Visible = true;
+		Ship2Img->Visible = true;
+		Ship3Img->Visible = true;
+		Ship4Img->Visible = true;
+		turnedShip2->Visible = true;
+		pictureBox6->Visible = true;
+		pictureBox5->Visible = true;
+		SinglesLeft->Visible = true;
+		Ships2Left->Visible = true;
+		Ships3Left->Visible = true;
+		Ships4Left->Visible = true;
+
 		SetStatusLbl("Connected");
 		EnemyReadyFlag->Visible = true;
 		MyReadyFlag->Visible = true;
+	}
+	break;
+	case ProgStat::ClientGameStart:
+	{
+		//prepare enemy area
+		PrepareArea(EnemyArea, EnemyStat, true);
+		//hide interface
+		Ship1Img->Visible = false;
+		Ship2Img->Visible = false;
+		Ship3Img->Visible = false;
+		Ship4Img->Visible = false;
+		turnedShip2->Visible = false;
+		pictureBox6->Visible = false;
+		pictureBox5->Visible = false;
+		SinglesLeft->Visible = false;
+		Ships2Left->Visible = false;
+		Ships3Left->Visible = false;
+		Ships4Left->Visible = false;
+		for (int i = 1; i < _strings; i++)
+			for (int j = 1; j < _collomns; j++)
+				GameArea[i][j]->Click -= gcnew System::EventHandler(this, &mainform::ChangeImg);
+
+		EnemyReadyFlag->Visible = false;
+		MyReadyFlag->Visible = false;
+
+		prgstat = ProgStat::EnemyTurn;
+		UpdateWnd();
 	}
 	break;
 	}
@@ -330,6 +442,13 @@ void seabattle::mainform::Client()
 					this->Invoke(gcnew Action<bool>(this, &mainform::UpdateEnemyFlag), (bool)bytes[1]);
 				}
 				break;
+				case 15:	//game started
+				{
+					//start game
+					prgstat = ProgStat::ClientGameStart;
+					this->Invoke(gcnew Action(this, &mainform::UpdateWnd));
+				}
+				break;
 				case 49:	//oh, hi!
 				{
 					prgstat = ProgStat::ClientConnected;
@@ -338,10 +457,63 @@ void seabattle::mainform::Client()
 					this->Invoke(gcnew Action(this, &mainform::UpdateWnd));
 				}
 				break;
+				case 50:
+				{
+					int I = bytes[1], J = bytes[2];
+
+					array<Byte>^ msg = gcnew array<Byte>(7);
+					msg[0] = 51;
+
+					int ship = 0;
+					bool turned = false;
+					int sI = 0, sJ = 0;
+
+					if (AreaStat[I][J] > 12) {
+						msg[1] = 1;	//hit
+						msg[2] = TryKill(I, J, &ship, &turned, &sI, &sJ);
+					}
+					else {
+						msg[1] = 0;	//miss
+						msg[2] = 0;
+						SetMiss(I, J);
+
+						prgstat = ProgStat::MyTurn;
+						this->Invoke(gcnew Action(this, &mainform::UpdateWnd));
+					}
+					msg[3] = ship;
+					msg[4] = turned;
+					msg[5] = sI;
+					msg[6] = sJ;
+
+					Stream->Write(msg, 0, msg->Length);
+				}
+				break;
+				case 51:
+				{
+					if (bytes[1]) {	//hit
+						if (bytes[2]) {	//destroyed
+							Kill(bytes[5], bytes[6], bytes[3], bytes[4]);
+						}
+						else {	//wounded
+							EnemyStat[LastHitI][LastHitJ] = 1;
+							SyncStat(LastHitI, LastHitJ, true);
+						}
+					}
+					else {	//miss
+						EnemyStat[LastHitI][LastHitJ] = 2;
+						SyncStat(LastHitI, LastHitJ, true);
+
+						prgstat = ProgStat::EnemyTurn;
+						this->Invoke(gcnew Action(this, &mainform::UpdateWnd));
+					}
+				}
+				break;
 				}
 		} while (1);
 	}
-	catch (...) {}
+	catch (SocketException^ e) {
+
+	}
 	try {
 		TCPclient->Close();
 	}
@@ -487,11 +659,284 @@ void seabattle::mainform::DeleteShip(int I, int J)
 
 void seabattle::mainform::Shoot(int I, int J)
 {
-	array<Byte>^ msg = gcnew array<Byte>(3);
+	LastHitI = I;
+	LastHitJ = J;
+	array<Byte>^ msg = gcnew array<Byte>(4);
 	msg[0] = 50;
 	msg[1] = I;
 	msg[2] = J;
+	msg[3] = 1;
 	Stream->Write(msg, 0, msg->Length);
+}
+
+int seabattle::mainform::TryKill(int I, int J, int* ship, bool* turned, int* sI, int* sJ)
+{
+	AreaStat[I][J] -= 10;	//set to destroyed
+	SyncStat(I, J, false);
+
+	int temp_i = I;
+	int temp_j = J;
+	int alive_parts = 0;
+	int destroyed_parts = 0;
+	int stepsL = 0, stepsR = 0, stepsUp = 0, stepsDown = 0;
+
+	//go left
+	do {
+		temp_i--;
+		if (!temp_i) break;
+		if (AreaStat[temp_i][temp_j] > 12) {
+			alive_parts++;
+			stepsL++;
+		}
+		else if (AreaStat[temp_i][temp_j] > 2 && AreaStat[temp_i][temp_j] < 10) {
+			destroyed_parts++;
+			stepsL++;
+		}
+	} while (AreaStat[temp_i][temp_j] != 0 && AreaStat[temp_i][temp_j] != 2);
+
+	//go right
+	temp_i = I;
+	do {
+		temp_i++;
+		if (!(temp_i < _collomns)) break;
+		if (AreaStat[temp_i][temp_j] > 12) {
+			alive_parts++;
+			stepsR++;
+		}
+		else if (AreaStat[temp_i][temp_j] > 2 && AreaStat[temp_i][temp_j] < 10) {
+			destroyed_parts++;
+			stepsR++;
+		}
+	} while (AreaStat[temp_i][temp_j] != 0 && AreaStat[temp_i][temp_j] != 2);
+
+	//go up
+	temp_i = I;
+	do {
+		temp_j--;
+		if (!temp_j) break;
+		if (AreaStat[temp_i][temp_j] > 12) {
+			alive_parts++;
+			stepsUp++;
+		}
+		else if (AreaStat[temp_i][temp_j] > 2 && AreaStat[temp_i][temp_j] < 10) {
+			destroyed_parts++;
+			stepsUp++;
+		}
+	} while (AreaStat[temp_i][temp_j] != 0 && AreaStat[temp_i][temp_j] != 2);
+
+	//go down
+	temp_j = J;
+	do {
+		temp_j++;
+		if (!(temp_j < _strings)) break;
+		if (AreaStat[temp_i][temp_j] > 12) {
+			alive_parts++;
+			stepsDown++;
+		}
+		else if (AreaStat[temp_i][temp_j] > 2 && AreaStat[temp_i][temp_j] < 10) {
+			destroyed_parts++;
+			stepsDown++;
+		}
+	} while (AreaStat[temp_i][temp_j] != 0 && AreaStat[temp_i][temp_j] != 2);
+
+	if (alive_parts)
+		return 0;
+	else {
+		*sI = I - stepsL;
+		*sJ = J - stepsUp;
+		if (stepsDown + stepsUp)
+			*turned = true;
+		else
+			*turned = false;
+		*ship = destroyed_parts + 1;
+		SetMiss(*sI, *sJ, *ship, *turned);
+		return 1;
+	}
+}
+
+void seabattle::mainform::SyncStat(int I, int J, bool isEnemy)
+{
+	array<array<Button^>^>^ imgArea;
+	array<array<int>^>^ statArea;
+
+	if (isEnemy) {
+		imgArea = EnemyArea;
+		statArea = EnemyStat;
+	}
+	else {
+		imgArea = GameArea;
+		statArea = AreaStat;
+	}
+
+	switch ((CellIndex)statArea[I][J])
+	{
+	case CellIndex::Down_Destroyed:
+		imgArea[I][J]->Image = ImageProvider::Down_Destroyed;
+		break;
+	case CellIndex::LeftRight_Destroyed:
+		imgArea[I][J]->Image = ImageProvider::LeftRight_Destroyed;
+		break;
+	case CellIndex::Left_Destroyed:
+		imgArea[I][J]->Image = ImageProvider::Left_Destroyed;
+		break;
+	case CellIndex::Right_Destroyed:
+		imgArea[I][J]->Image = ImageProvider::Right_Destroyed;
+		break;
+	case CellIndex::Single_Destroyed:
+		imgArea[I][J]->Image = ImageProvider::Single_Destroyed;
+		break;
+	case CellIndex::UpDown_Destroyed:
+		imgArea[I][J]->Image = ImageProvider::UpDown_Destroyed;
+		break;
+	case CellIndex::Up_Destroyed:
+		imgArea[I][J]->Image = ImageProvider::Up_Destroyed;
+		break;
+	case CellIndex::Empty:
+		imgArea[I][J]->Image = ImageProvider::Empty;
+		break;
+	case CellIndex::Miss:
+		imgArea[I][J]->Image = ImageProvider::Miss;
+		break;
+	case CellIndex::Damaged_Unknown:
+		imgArea[I][J]->Image = ImageProvider::Damaged_Unknown;
+		break;
+	default:
+		break;
+	}
+}
+
+void seabattle::mainform::Kill(int I, int J, int ship, bool turned)
+{
+	int I_right;
+	int J_down;
+	int replaced_parts = 0;
+	if (!turned) {
+		I_right = I + ship + 1;
+		J_down = J + 2;
+	}
+	else
+	{
+		I_right = I + 2;
+		J_down = J + ship + 1;
+	}
+	EnemyStat[LastHitI][LastHitJ] = (int)CellIndex::Damaged_Unknown;
+	for (int i = I - 1; i < I_right; i++) {
+		if (!i || i >= _collomns) continue;
+		for (int j = J - 1; j < J_down; j++) {
+			if (!j || j >= _strings) continue;
+			if (EnemyStat[i][j] == (int)CellIndex::Empty) {
+				EnemyStat[i][j] = (int)CellIndex::Miss;
+			}
+			else if (EnemyStat[i][j] == (int)CellIndex::Damaged_Unknown) {
+				switch (ship)
+				{
+				case 1:
+				{
+					EnemyStat[i][j] = (int)CellIndex::Single_Destroyed;
+					replaced_parts++;
+				}
+				break;
+				case 2:
+				{
+					if (!turned) {
+						if (!replaced_parts)
+							EnemyStat[i][j] = (int)CellIndex::Left_Destroyed;
+						else
+							EnemyStat[i][j] = (int)CellIndex::Right_Destroyed;
+						replaced_parts++;
+					}
+					else {
+						if (!replaced_parts)
+							EnemyStat[i][j] = (int)CellIndex::Up_Destroyed;
+						else
+							EnemyStat[i][j] = (int)CellIndex::Down_Destroyed;
+						replaced_parts++;
+					}
+				}
+				break;
+				case 3:
+				{
+					if (!turned) {
+						if (!replaced_parts)
+							EnemyStat[i][j] = (int)CellIndex::Left_Destroyed;
+						else if (replaced_parts == 1)
+							EnemyStat[i][j] = (int)CellIndex::LeftRight_Destroyed;
+						else
+							EnemyStat[i][j] = (int)CellIndex::Right_Destroyed;
+						replaced_parts++;
+					}
+					else {
+						if (!replaced_parts)
+							EnemyStat[i][j] = (int)CellIndex::Up_Destroyed;
+						else if (replaced_parts == 1)
+							EnemyStat[i][j] = (int)CellIndex::UpDown_Destroyed;
+						else
+							EnemyStat[i][j] = (int)CellIndex::Down_Destroyed;
+						replaced_parts++;
+					}
+				}
+				break;
+				case 4:
+				{
+					if (!turned) {
+						if (!replaced_parts)
+							EnemyStat[i][j] = (int)CellIndex::Left_Destroyed;
+						else if (replaced_parts == 1 || replaced_parts == 2)
+							EnemyStat[i][j] = (int)CellIndex::LeftRight_Destroyed;
+						else
+							EnemyStat[i][j] = (int)CellIndex::Right_Destroyed;
+						replaced_parts++;
+					}
+					else {
+						if (!replaced_parts)
+							EnemyStat[i][j] = (int)CellIndex::Up_Destroyed;
+						else if (replaced_parts == 1 || replaced_parts == 2)
+							EnemyStat[i][j] = (int)CellIndex::UpDown_Destroyed;
+						else
+							EnemyStat[i][j] = (int)CellIndex::Down_Destroyed;
+						replaced_parts++;
+					}
+				}
+				break;
+				default:
+					break;
+				}
+			}
+			SyncStat(i, j, true);
+		}
+	}
+}
+
+void seabattle::mainform::SetMiss(int I, int J)
+{
+	AreaStat[I][J] = (int)CellIndex::Miss;
+	SyncStat(I, J, false);
+}
+
+void seabattle::mainform::SetMiss(int I, int J, int ship, bool turned)
+{
+	int I_right;
+	int J_down;
+	int replaced_parts = 0;
+	if (!turned) {
+		I_right = I + ship + 1;
+		J_down = J + 2;
+	}
+	else
+	{
+		I_right = I + 2;
+		J_down = J + ship + 1;
+	}
+	for (int i = I - 1; i < I_right; i++) {
+		if (!i || i >= _collomns) continue;
+		for (int j = J - 1; j < J_down; j++) {
+			if (!j || j >= _strings) continue;
+			if (AreaStat[i][j] == 0) {
+				AreaStat[i][j] = (int)CellIndex::Miss;
+				SyncStat(i, j, false);
+			}
+		}
+	}
 }
 
 System::Void seabattle::mainform::StartSrvBtn_Click(System::Object ^ sender, System::EventArgs ^ e)
@@ -514,6 +959,8 @@ System::Void seabattle::mainform::SrvBtn_Click(System::Object ^ sender, System::
 
 System::Void seabattle::mainform::MyReadyFlag_CheckedChanged(System::Object ^ sender, System::EventArgs ^ e)
 {
+	if (AreaStat[0][1] || AreaStat[0][2] || AreaStat[0][3] || AreaStat[0][4]) return;
+
 	array<Byte>^ msg = gcnew array<Byte>(2);
 	msg[0] = 11;
 	msg[1] = MyReadyFlag->Checked;
@@ -666,13 +1113,14 @@ System::Void seabattle::mainform::button1_Click(System::Object ^ sender, System:
 	Button^ btn = dynamic_cast<Button^>(sender);
 	for (int i = 0; i < 11; i++) {
 		for (int j = 0; j < 11; j++) {
-			if (GameArea[i][j] == btn) {
+			if (EnemyArea[i][j] == btn) {
 				I = i;
 				J = j;
 			}
 		}
 	}
-	Shoot(I, J);
+	if (!EnemyStat[I][J])
+		Shoot(I, J);
 }
 
 seabattle::mainform::ImageProvider::ImageProvider()
@@ -693,4 +1141,11 @@ seabattle::mainform::ImageProvider::ImageProvider()
 	RightPart = (safe_cast<System::Drawing::Image^>(Resource->GetObject("rpImg.Image")));
 	UpPart = (safe_cast<System::Drawing::Image^>(Resource->GetObject("upImg.Image")));
 	DownPart = (safe_cast<System::Drawing::Image^>(Resource->GetObject("dpImg.Image")));
+
+	UpDown_Destroyed = (safe_cast<System::Drawing::Image^>(Resource->GetObject("pictureBox8.Image")));
+	LeftRight_Destroyed = (safe_cast<System::Drawing::Image^>(Resource->GetObject("pictureBox7.Image")));
+	Left_Destroyed = (safe_cast<System::Drawing::Image^>(Resource->GetObject("pictureBox9.Image")));
+	Right_Destroyed = (safe_cast<System::Drawing::Image^>(Resource->GetObject("pictureBox10.Image")));
+	Up_Destroyed = (safe_cast<System::Drawing::Image^>(Resource->GetObject("pictureBox12.Image")));
+	Down_Destroyed = (safe_cast<System::Drawing::Image^>(Resource->GetObject("pictureBox11.Image")));
 }
